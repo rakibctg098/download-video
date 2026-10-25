@@ -1,0 +1,6 @@
+{
+  "name": "Video Saver",
+  "description": "Smart Video Downloader & Link Inspector for Android with direct stream download, Bengali & English bilingual support, Room history, and PWA system.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
