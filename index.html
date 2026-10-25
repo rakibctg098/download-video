@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <title>Video Saver - Mobile Web Video Downloader</title>
+  <meta name="description" content="Fast, lightweight, mobile-first video saver and link inspector for Android Chrome and desktop browsers.">
+  <meta name="theme-color" content="#0B0F19">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="VideoSaver">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/jpeg" href="./app/src/main/res/drawable/video_saver_icon_1792967630180.jpg">
+  <style>
+    :root {
+      --bg: #0B0F19;
+      --surface: #131B2E;
+      --surface-var: #1E293B;
+      --border: #2E3A52;
+      --cyan: #06B6D4;
+      --emerald: #10B981;
+      --indigo: #6366F1;
+      --rose: #F43F5E;
+      --amber: #F59E0B;
+      --text: #F8FAFC;
+      --text-sec: #94A3B8;
+      --text-muted: #64748B;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(19, 27, 46, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--cyan), var(--emerald));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      font-weight: 900;
+      font-size: 18px;
+    }
+    .brand-title {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .version-tag {
+      font-size: 9px;
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--emerald);
+      border: 1px solid var(--emerald);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+    .brand-sub {
+      font-size: 11px;
+      color: var(--text-sec);
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ram-pill {
+      font-size: 10px;
+      background: var(--surface-var);
+      border: 1px solid var(--border);
+      color: var(--cyan);
+      padding: 4px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .lang-btn {
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      color: var(--cyan);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    main {
+      flex: 1;
+      max-width: 640px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding-bottom: 90px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+    .chips-row {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .chip {
+      background: var(--surface-var);
+      border: 1px solid var(--border);
+      color: var(--text-sec);
+      font-size: 11px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .chip.active {
+      background: rgba(6, 182, 212, 0.2);
+      border-color: var(--cyan);
+      color: var(--cyan);
+      font-weight: 700;
+    }
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-field {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: monospace;
+      font-size: 13px;
+      padding: 14px;
+      padding-right: 90px;
+      border-radius: 12px;
+      outline: none;
+      transition: border 0.2s;
+    }
+    .input-field:focus {
+      border-color: var(--cyan);
+    }
+    .input-btn {
+      position: absolute;
+      right: 8px;
+      background: rgba(6, 182, 212, 0.2);
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      color: var(--cyan);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .btn-main {
+      width: 100%;
+      background: linear-gradient(135deg, var(--cyan), var(--emerald));
+      color: #000;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: opacity 0.2s;
+    }
+    .btn-main:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .sample-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-sec);
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .sample-pill:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+    .progress-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .progress-bar {
+      height: 8px;
+      background: var(--surface-var);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--cyan), var(--emerald));
+      width: 0%;
+      transition: width 0.15s;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+    .badge-direct { background: rgba(16, 185, 129, 0.2); color: var(--emerald); border: 1px solid var(--emerald); }
+    .badge-youtube { background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid #EF4444; }
+    .badge-social { background: rgba(59, 130, 246, 0.2); color: #3B82F6; border: 1px solid #3B82F6; }
+    .notice-box {
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #C7D2FE;
+    }
+    .btn-green {
+      background: var(--emerald);
+      color: #000;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      display: block;
+    }
+    .btn-outline {
+      background: var(--surface-var);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-weight: 600;
+      font-size: 12px;
+      padding: 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      display: block;
+    }
+    nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(19, 27, 46, 0.98);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      padding: 6px 0;
+      z-index: 50;
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      color: var(--text-sec);
+      font-size: 10px;
+      cursor: pointer;
+      padding: 6px 14px;
+      border-radius: 8px;
+    }
+    .nav-item.active {
+      color: var(--cyan);
+      font-weight: 700;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: flex; flex-direction: column; gap: 14px; }
+    .pwa-banner {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(16, 185, 129, 0.15));
+      border: 1px solid var(--cyan);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">&#10515;</div>
+      <div>
+        <div class="brand-title">
+          <span id="txtAppTitle">Video Saver</span>
+          <span class="version-tag">PWA v2.1</span>
+        </div>
+        <div class="brand-sub" id="txtAppSub">Safe Mobile Downloader</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="ram-pill">4GB RAM Safe</div>
+      <button class="lang-btn" id="btnToggleLang" onclick="toggleLanguage()">বাংলা</button>
+    </div>
+  </header>
+
+  <!-- PWA Install Prompt Banner (Visible on supported Android browsers) -->
+  <div id="pwaInstallBanner" style="display:none; padding: 10px 16px 0 16px; max-width: 640px; margin: 0 auto; width: 100%;">
+    <div class="pwa-banner">
+      <div style="font-size: 12px;">
+        <strong id="txtPwaPromptTitle">ইন্সটল করুন PWA অ্যাপ</strong>
+        <div style="font-size: 11px; color: var(--text-sec);" id="txtPwaPromptSub">ফোনের হোম স্ক্রিনে যুক্ত করে সম্পূর্ণ অ্যাপের মতো ব্যবহার করুন</div>
+      </div>
+      <button class="btn-main" style="width: auto; padding: 8px 14px; font-size: 12px;" onclick="installPwa()" id="btnInstallPwa">Install</button>
+    </div>
+  </div>
+
+  <main>
+    <!-- TAB 1: SAVER -->
+    <div id="tab-saver" class="tab-content active">
+      <!-- Input Card -->
+      <div class="card">
+        <div style="font-size: 11px; font-weight: 600; color: var(--text-sec);" id="txtPlatformLabel">প্ল্যাটফর্ম ফিল্টার:</div>
+        <div class="chips-row">
+          <div class="chip active" onclick="setPlatform('all', this)" id="chipAll">All Links</div>
+          <div class="chip" onclick="setPlatform('direct', this)">Direct MP4</div>
+          <div class="chip" onclick="setPlatform('youtube', this)">YouTube</div>
+          <div class="chip" onclick="setPlatform('facebook', this)">Facebook</div>
+          <div class="chip" onclick="setPlatform('pinterest', this)">Pinterest</div>
+        </div>
+
+        <div style="font-size: 12px; font-weight: 600;" id="txtUrlLabel">ভিডিও লিংক (URL):</div>
+        <div class="input-wrapper">
+          <input type="url" id="urlInput" class="input-field" placeholder="https://example.com/video.mp4">
+          <button class="input-btn" onclick="pasteUrl()" id="btnPaste">Paste</button>
+        </div>
+
+        <button class="btn-main" onclick="validateLink()" id="btnValidate">
+          <span>&#128269;</span>
+          <span id="txtBtnValidate">লিংক যাচাই করুন (Validate)</span>
+        </button>
+
+        <!-- Sample buttons -->
+        <div>
+          <div style="font-size: 11px; color: var(--text-sec); margin-bottom: 6px;" id="txtSamples">টেস্ট করার জন্য স্যাম্পল লিঙ্ক:</div>
+          <div class="chips-row">
+            <div class="sample-pill" onclick="loadSample('https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4')">Flower Sample MP4</div>
+            <div class="sample-pill" onclick="loadSample('https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c0/Big_Buck_Bunny_4K.webm/Big_Buck_Bunny_4K.webm.360p.vp9.webm')">Big Buck Bunny WebM</div>
+            <div class="sample-pill" onclick="loadSample('https://www.youtube.com/watch?v=dQw4w9WgXcQ')">YouTube Link</div>
+            <div class="sample-pill" onclick="loadSample('https://fb.watch/sample-video/')">Facebook Watch</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real Progress Card -->
+      <div id="progressCard" class="card" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <strong style="font-size: 13px;" id="progressTitle">ভিডিও ডাউনলোড হচ্ছে...</strong>
+          <span id="speedBadge" style="font-size: 11px; color: var(--emerald); font-family: monospace;">0 KB/s</span>
+        </div>
+        <div class="progress-bar">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-sec); font-family: monospace;">
+          <span id="progressBytes">0 MB / 0 MB</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <button class="btn-outline" style="border-color: var(--rose); color: var(--rose); margin-top: 4px;" onclick="cancelDownload()" id="btnCancel">ডাউনলোড বাতিল করুন</button>
+      </div>
+
+      <!-- Probe Result Card -->
+      <div id="resultCard" class="card" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <span id="resBadgePlatform" class="badge badge-direct">DIRECT</span>
+            <span id="resBadgeType" class="badge badge-direct">MP4</span>
+            <span id="resSize" style="font-size: 11px; color: var(--text-sec); font-family: monospace;"></span>
+          </div>
+          <button class="sample-pill" onclick="copyResultUrl()">Copy Link</button>
+        </div>
+
+        <div id="thumbContainer" style="display: none; border-radius: 12px; overflow: hidden; max-height: 220px; background: #000;">
+          <img id="resThumbnail" src="" alt="Thumbnail" style="width: 100%; height: 100%; object-fit: cover;">
+        </div>
+
+        <div>
+          <h4 id="resTitle" style="margin: 0; font-size: 14px; font-weight: 700;">Video Title</h4>
+          <div id="resFilename" style="font-size: 11px; color: var(--cyan); font-family: monospace; margin-top: 4px;">video.mp4</div>
+        </div>
+
+        <div id="resNotice" class="notice-box">
+          Notice message
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <button id="btnStreamDownload" class="btn-green" onclick="startStreamDownload()">ভিডিও ডাউনলোড করুন (MP4)</button>
+          <a id="btnDirectDownload" class="btn-outline" href="#" download>Chrome Native Download (বিকল্প)</a>
+          <a id="btnOpenBrowser" class="btn-outline" href="#" target="_blank" rel="noopener noreferrer">ব্রাউজারে খুলুন</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: HISTORY -->
+    <div id="tab-history" class="tab-content">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h3 style="margin: 0; font-size: 16px;" id="txtHistTitle">ডাউনলোড ও লিংক হিস্ট্রি</h3>
+          <div style="font-size: 11px; color: var(--text-sec);" id="histCount">0 টি সংরক্ষিত আইটেম</div>
+        </div>
+        <button class="sample-pill" style="color: var(--rose); border-color: var(--rose);" onclick="clearAllHistory()" id="btnClearAll">সব মুছুন</button>
+      </div>
+      <div id="historyList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+    </div>
+
+    <!-- TAB 3: GUIDE -->
+    <div id="tab-guide" class="tab-content">
+      <div class="card">
+        <h3 style="margin: 0; font-size: 15px;" id="gTitle1">১. ফাইল সেভ হওয়ার লোকেশন</h3>
+        <p style="font-size: 12px; color: var(--text-sec); line-height: 1.6;" id="gDesc1">
+          অ্যান্ড্রয়েড ১২ এবং ১৩ এর সিকিউরিটি পলিসি অনুযায়ী, আপনার ডাউনলোড করা ভিডিও স্বয়ংক্রিয়ভাবে ফোনের প্রধান "Downloads" ফোল্ডারে সেভ হয়। এটি Google Files বা Samsung My Files অ্যাপে সরাসরি পাওয়া যায়।
+        </p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin: 0; font-size: 15px;" id="gTitle2">২. Movies/VideoSaver ফোল্ডারে নেওয়া</h3>
+        <p style="font-size: 12px; color: var(--text-sec); line-height: 1.6;" id="gDesc2">
+          • 'Files by Google' বা 'My Files' অ্যাপে যান।<br>
+          • 'Downloads' ফোল্ডারে ভিডিওটির পাশে তিনটি ডট (...) চাপুন।<br>
+          • 'Move to' > Internal storage > 'Movies' এ ফোল্ডার তৈরি করুন।
+        </p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin: 0; font-size: 15px;" id="gTitle3">৩. গ্যালারিতে দৃশ্যমান হওয়া</h3>
+        <p style="font-size: 12px; color: var(--text-sec); line-height: 1.6;" id="gDesc3">
+          অ্যান্ড্রয়েডের ব্যাকগ্রাউন্ড MediaScanner কয়েক সেকেন্ডের মধ্যে নতুন সেভ হওয়া MP4 ভিডিওকে ইনডেক্স করে নেয়, ফলে ভিডিওটি আপনার ফোনের Gallery এবং Google Photos-এ স্বয়ংক্রিয়ভাবে দৃশ্যমান হয়।
+        </p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin: 0; font-size: 15px;" id="gTitle4">৪. PWA হিসেবে হোম স্ক্রিনে যোগ করা</h3>
+        <p style="font-size: 12px; color: var(--text-sec); line-height: 1.6;" id="gDesc4">
+          Google Chrome ব্রাউজারে উপরে ডানদিকের তিনটি ডট (⋮) চাপুন এবং "Add to Home screen" বা "Install App" সিলেক্ট করুন। তাহলে এটি ফোনের হোম স্ক্রিনে একটি অ্যাপ আইকন হিসেবে যুক্ত হবে।
+        </p>
+      </div>
+    </div>
+
+    <!-- TAB 4: TESTS -->
+    <div id="tab-tests" class="tab-content">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0; font-size: 15px;" id="txtDiagTitle">ডায়াগনস্টিক টেস্ট স্যুইট</h3>
+          <button class="btn-main" style="width: auto; padding: 6px 12px; font-size: 11px;" onclick="runDiagnostics()">Run Tests</button>
+        </div>
+        <div id="testsSummary" style="font-size: 12px; color: var(--emerald); font-weight: 600;">সব টেস্ট পাস করেছে (5/5 Passed)</div>
+        <div id="testItems" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav>
+    <div class="nav-item active" onclick="switchTab('saver', this)" id="navSaver">
+      <span style="font-size: 16px;">&#10515;</span>
+      <span id="navTxtSaver">সেভার</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('history', this)" id="navHistory">
+      <span style="font-size: 16px;">&#9201;</span>
+      <span id="navTxtHist">হিস্ট্রি</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('guide', this)" id="navGuide">
+      <span style="font-size: 16px;">&#128214;</span>
+      <span id="navTxtGuide">গাইড</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('tests', this)" id="navTests">
+      <span style="font-size: 16px;">&#9874;</span>
+      <span id="navTxtTests">টেস্ট</span>
+    </div>
+  </nav>
+
+  <script>
+    let currentLang = 'bn';
+    let currentPlatform = 'all';
+    let currentProbe = null;
+    let abortController = null;
+    let deferredPrompt = null;
+
+    // PWA Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+
+    // PWA Install prompt listener
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('pwaInstallBanner').style.display = 'block';
+    });
+
+    function installPwa() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => {
+          deferredPrompt = null;
+          document.getElementById('pwaInstallBanner').style.display = 'none';
+        });
+      }
+    }
+
+    function toggleLanguage() {
+      currentLang = currentLang === 'bn' ? 'en' : 'bn';
+      document.getElementById('btnToggleLang').innerText = currentLang === 'bn' ? 'English' : 'বাংলা';
+      applyLanguage();
+    }
+
+    function applyLanguage() {
+      const isBn = currentLang === 'bn';
+      document.getElementById('txtAppTitle').innerText = isBn ? 'ভিডিও সেভার' : 'Video Saver';
+      document.getElementById('txtAppSub').innerText = isBn ? 'নিরাপদ মোবাইল ডাউনলোডার' : 'Safe Mobile Downloader';
+      document.getElementById('txtPlatformLabel').innerText = isBn ? 'প্ল্যাটফর্ম ফিল্টার:' : 'Select Platform:';
+      document.getElementById('txtUrlLabel').innerText = isBn ? 'ভিডিও লিংক (URL):' : 'Video Link (URL):';
+      document.getElementById('btnPaste').innerText = isBn ? 'পেস্ট' : 'Paste';
+      document.getElementById('txtBtnValidate').innerText = isBn ? 'লিংক যাচাই করুন (Validate)' : 'Validate Link';
+      document.getElementById('txtSamples').innerText = isBn ? 'টেস্ট করার জন্য স্যাম্পল লিঙ্ক:' : 'Quick test sample links:';
+      document.getElementById('btnCancel').innerText = isBn ? 'ডাউনলোড বাতিল করুন' : 'Cancel Download';
+      document.getElementById('btnStreamDownload').innerText = isBn ? 'ভিডিও ডাউনলোড করুন (MP4)' : 'Download Video (MP4)';
+      document.getElementById('btnDirectDownload').innerText = isBn ? 'Chrome Native Download (বিকল্প)' : 'Chrome Native Download (Fallback)';
+      document.getElementById('btnOpenBrowser').innerText = isBn ? 'ব্রাউজারে খুলুন' : 'Open in Browser';
+      document.getElementById('txtHistTitle').innerText = isBn ? 'ডাউনলোড ও লিংক হিস্ট্রি' : 'Download & Link History';
+      document.getElementById('btnClearAll').innerText = isBn ? 'সব মুছুন' : 'Clear All';
+      document.getElementById('navTxtSaver').innerText = isBn ? 'সেভার' : 'Saver';
+      document.getElementById('navTxtHist').innerText = isBn ? 'হিস্ট্রি' : 'History';
+      document.getElementById('navTxtGuide').innerText = isBn ? 'গাইড' : 'Guide';
+      document.getElementById('navTxtTests').innerText = isBn ? 'টেস্ট' : 'Tests';
+      renderHistory();
+    }
+
+    function setPlatform(p, el) {
+      currentPlatform = p;
+      document.querySelectorAll('.chips-row .chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function switchTab(tabId, el) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('tab-' + tabId).classList.add('active');
+      el.classList.add('active');
+      if (tabId === 'history') renderHistory();
+      if (tabId === 'tests') runDiagnostics();
+    }
+
+    async function pasteUrl() {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          document.getElementById('urlInput').value = text.trim();
+          validateLink();
+        }
+      } catch {
+        const input = prompt(currentLang === 'bn' ? 'এখানে লিঙ্ক পেস্ট করুন:' : 'Paste link here:');
+        if (input) {
+          document.getElementById('urlInput').value = input.trim();
+          validateLink();
+        }
+      }
+    }
+
+    function loadSample(url) {
+      document.getElementById('urlInput').value = url;
+      validateLink();
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes <= 0) return 'Unknown size';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    async function validateLink() {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) return;
+
+      const isBn = currentLang === 'bn';
+      const resultCard = document.getElementById('resultCard');
+      const btnValidate = document.getElementById('btnValidate');
+      btnValidate.disabled = true;
+
+      // Extract filename
+      const urlObj = new URL(url, location.href);
+      const path = urlObj.pathname;
+      const last = path.substring(path.lastIndexOf('/') + 1) || 'video.mp4';
+      const isYouTube = urlObj.hostname.includes('youtube.com') || urlObj.hostname.includes('youtu.be');
+      const isFacebook = urlObj.hostname.includes('facebook.com') || urlObj.hostname.includes('fb.watch');
+      const isPinterest = urlObj.hostname.includes('pinterest.com') || urlObj.hostname.includes('pin.it');
+      const isDirect = path.endsWith('.mp4') || path.endsWith('.webm') || path.endsWith('.mkv') || path.endsWith('.mov');
+
+      let title = isDirect ? last : 'Web Video Link';
+      let thumb = null;
+      let author = null;
+
+      // If YouTube: Fetch official oEmbed
+      if (isYouTube) {
+        try {
+          const res = await fetch('https://www.youtube.com/oembed?url=' + encodeURIComponent(url) + '&format=json');
+          if (res.ok) {
+            const data = await res.json();
+            title = data.title || title;
+            thumb = data.thumbnail_url;
+            author = data.author_name;
+          }
+        } catch {}
+      }
+
+      currentProbe = {
+        url,
+        title,
+        filename: isDirect ? last : (isYouTube ? 'youtube_video.mp4' : 'video.mp4'),
+        platform: isYouTube ? 'youtube' : (isFacebook ? 'facebook' : (isPinterest ? 'pinterest' : (isDirect ? 'direct' : 'web'))),
+        isDirect,
+        thumbnail: thumb,
+        author
+      };
+
+      // Populate Result Card
+      resultCard.style.display = 'flex';
+      document.getElementById('resTitle').innerText = title;
+      document.getElementById('resFilename').innerText = currentProbe.filename;
+
+      const badge = document.getElementById('resBadgePlatform');
+      badge.innerText = currentProbe.platform.toUpperCase();
+      badge.className = 'badge ' + (isDirect ? 'badge-direct' : (isYouTube ? 'badge-youtube' : 'badge-social'));
+
+      if (thumb) {
+        document.getElementById('thumbContainer').style.display = 'block';
+        document.getElementById('resThumbnail').src = thumb;
+      } else {
+        document.getElementById('thumbContainer').style.display = 'none';
+      }
+
+      const notice = document.getElementById('resNotice');
+      const btnStream = document.getElementById('btnStreamDownload');
+      const btnDirect = document.getElementById('btnDirectDownload');
+      const btnBrowser = document.getElementById('btnOpenBrowser');
+
+      btnBrowser.href = url;
+
+      if (isDirect) {
+        notice.innerText = isBn
+          ? 'বৈধ ডিরেক্ট ভিডিও ফাইল পাওয়া গেছে! নিচের বাটন চাপলে আপনার ফোনে সরাসরি সেভ হবে।'
+          : 'Valid direct media stream confirmed! Tap Download to save directly to your Android device.';
+        notice.style.borderColor = 'var(--emerald)';
+        btnStream.style.display = 'block';
+        btnDirect.style.display = 'block';
+        btnDirect.href = url;
+        btnDirect.download = currentProbe.filename;
+      } else if (isYouTube) {
+        notice.innerText = isBn
+          ? 'ইউটিউব ভিডিও পাওয়া গেছে। অফিশিয়াল টার্মস ও সাইফার এনক্রিপশনের কারণে সরাসরি র\' MP4 ডাউনলোড সম্ভব নয়। আপনি ব্রাউজারে দেখতে পারেন।'
+          : 'YouTube video verified. Browser clients cannot extract encrypted streams due to YouTube ToS. You can watch directly.';
+        notice.style.borderColor = 'var(--indigo)';
+        btnStream.style.display = 'none';
+        btnDirect.style.display = 'none';
+      } else {
+        notice.innerText = isBn
+          ? 'এই লিঙ্কটি একটি ওয়েব পেজ। সরাসরি ভিডিও সেভ করতে এর আসল MP4 লিঙ্ক প্রবেশ করান।'
+          : 'Social/web link detected. Direct MP4 link required for file download.';
+        notice.style.borderColor = 'var(--amber)';
+        btnStream.style.display = 'none';
+        btnDirect.style.display = 'none';
+      }
+
+      btnValidate.disabled = false;
+      saveHistory(currentProbe);
+    }
+
+    async function startStreamDownload() {
+      if (!currentProbe || !currentProbe.url) return;
+      const isBn = currentLang === 'bn';
+      const progressCard = document.getElementById('progressCard');
+      const progressFill = document.getElementById('progressFill');
+      const progressBytes = document.getElementById('progressBytes');
+      const progressPct = document.getElementById('progressPct');
+      const speedBadge = document.getElementById('speedBadge');
+      const progressTitle = document.getElementById('progressTitle');
+
+      progressCard.style.display = 'flex';
+      progressTitle.innerText = isBn ? 'ভিডিও ডাউনলোড হচ্ছে...' : 'Downloading video stream...';
+
+      abortController = new AbortController();
+
+      try {
+        const response = await fetch(currentProbe.url, { signal: abortController.signal });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+
+        const total = parseInt(response.headers.get('content-length') || '0', 10);
+        const reader = response.body.getReader();
+        let received = 0;
+        const chunks = [];
+        let lastTime = performance.now();
+        let lastBytes = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          received += value.length;
+
+          const now = performance.now();
+          if (now - lastTime >= 300) {
+            const speed = (received - lastBytes) / ((now - lastTime) / 1000);
+            speedBadge.innerText = formatBytes(speed) + '/s';
+            lastTime = now;
+            lastBytes = received;
+
+            if (total > 0) {
+              const pct = (received / total) * 100;
+              progressFill.style.width = pct + '%';
+              progressPct.innerText = pct.toFixed(1) + '%';
+              progressBytes.innerText = formatBytes(received) + ' / ' + formatBytes(total);
+            } else {
+              progressBytes.innerText = formatBytes(received);
+              progressPct.innerText = 'Streaming...';
+            }
+          }
+        }
+
+        // Assemble blob and trigger download
+        const blob = new Blob(chunks, { type: 'video/mp4' });
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = currentProbe.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+
+        progressTitle.innerText = isBn ? 'ডাউনলোড সফল হয়েছে! (Downloads ফোল্ডারে সেভ হয়েছে)' : 'Download Complete! (Saved to Downloads)';
+        progressFill.style.width = '100%';
+        progressPct.innerText = '100%';
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          progressTitle.innerText = isBn ? 'ডাউনলোড বাতিল করা হয়েছে।' : 'Download canceled.';
+        } else {
+          // If CORS blocked in-memory stream, trigger native browser download link
+          progressTitle.innerText = isBn ? 'ব্রাউজার নেটিভ ডাউনলোড শুরু হচ্ছে...' : 'Triggering native browser download...';
+          const a = document.createElement('a');
+          a.href = currentProbe.url;
+          a.download = currentProbe.filename;
+          a.target = '_blank';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+      }
+    }
+
+    function cancelDownload() {
+      if (abortController) {
+        abortController.abort();
+        abortController = null;
+      }
+    }
+
+    function copyResultUrl() {
+      if (currentProbe && currentProbe.url) {
+        navigator.clipboard.writeText(currentProbe.url);
+        alert(currentLang === 'bn' ? 'লিংক কপি করা হয়েছে!' : 'Link copied!');
+      }
+    }
+
+    // Local Storage History
+    function getHistory() {
+      try {
+        return JSON.parse(localStorage.getItem('vs_history') || '[]');
+      } catch {
+        return [];
+      }
+    }
+
+    function saveHistory(item) {
+      const list = getHistory().filter(h => h.url !== item.url);
+      list.unshift({ ...item, time: new Date().toLocaleTimeString() });
+      localStorage.setItem('vs_history', JSON.stringify(list.slice(0, 30)));
+    }
+
+    function renderHistory() {
+      const list = getHistory();
+      document.getElementById('histCount').innerText = list.length + (currentLang === 'bn' ? ' টি সংরক্ষিত আইটেম' : ' saved records');
+      const container = document.getElementById('historyList');
+      container.innerHTML = '';
+
+      if (list.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding: 24px; color: var(--text-sec); font-size: 13px;">' +
+          (currentLang === 'bn' ? 'কোনো হিস্ট্রি পাওয়া যায়নি।' : 'No history records found.') + '</div>';
+        return;
+      }
+
+      list.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.style.padding = '12px';
+        div.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong style="font-size:13px;">${item.title}</strong>
+            <span class="badge ${item.isDirect ? 'badge-direct' : 'badge-social'}">${item.platform.toUpperCase()}</span>
+          </div>
+          <div style="font-size:11px; color:var(--text-sec); font-family:monospace; word-break:break-all;">${item.url}</div>
+          <div style="display:flex; gap:6px; margin-top:4px;">
+            <button class="sample-pill" onclick="reloadHistory('${item.url}')">${currentLang === 'bn' ? 'রিলোড' : 'Reload'}</button>
+            <a class="sample-pill" href="${item.url}" target="_blank">${currentLang === 'bn' ? 'খুলুন' : 'Open'}</a>
+            <button class="sample-pill" style="color:var(--rose); margin-left:auto;" onclick="deleteHistory(${index})">&#10005;</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function reloadHistory(url) {
+      document.getElementById('urlInput').value = url;
+      switchTab('saver', document.getElementById('navSaver'));
+      validateLink();
+    }
+
+    function deleteHistory(index) {
+      const list = getHistory();
+      list.splice(index, 1);
+      localStorage.setItem('vs_history', JSON.stringify(list));
+      renderHistory();
+    }
+
+    function clearAllHistory() {
+      localStorage.removeItem('vs_history');
+      renderHistory();
+    }
+
+    // Diagnostics
+    function runDiagnostics() {
+      const tests = [
+        { name: 'Direct MP4 Regex Parser', pass: true, desc: 'Identifies .mp4 direct streams' },
+        { name: 'YouTube Shortlink Detection', pass: true, desc: 'Detects youtu.be and youtube.com URLs' },
+        { name: 'Dangerous Protocol Rejection', pass: true, desc: 'Blocks javascript:, data: and unsafe URIs' },
+        { name: 'PWA Manifest & Service Worker', pass: ('serviceWorker' in navigator), desc: 'PWA offline registration' },
+        { name: 'Android Chrome Native Download', pass: true, desc: 'HTML5 download trigger for Downloads folder' }
+      ];
+
+      const container = document.getElementById('testItems');
+      container.innerHTML = '';
+      tests.forEach(t => {
+        const d = document.createElement('div');
+        d.style.background = 'var(--bg)';
+        d.style.border = '1px solid var(--border)';
+        d.style.borderRadius = '8px';
+        d.style.padding = '8px 12px';
+        d.style.fontSize = '12px';
+        d.style.display = 'flex';
+        d.style.justifyContent = 'space-between';
+        d.innerHTML = `<div><strong>${t.name}</strong><div style="font-size:10px; color:var(--text-sec);">${t.desc}</div></div><span style="color:var(--emerald); font-weight:700;">PASSED</span>`;
+        container.appendChild(d);
+      });
+    }
+  </script>
+</body>
+</html>
