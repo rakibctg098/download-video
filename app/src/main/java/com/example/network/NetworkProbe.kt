@@ -1,5 +1,6 @@
 package com.example.network
 
+import android.util.Base64
 import com.example.data.model.PlatformType
 import com.example.data.model.ProbeResult
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +34,24 @@ object NetworkProbe {
             .replace("\\u0026", "&")
             .replace("\\u0025", "%")
             .replace("&amp;", "&")
+    }
+
+    private fun extractFbCdnFromToken(snapUrl: String): String {
+        return try {
+            if (!snapUrl.contains("token=")) return snapUrl
+            val token = snapUrl.substringAfter("token=").substringBefore("&")
+            val parts = token.split(".")
+            if (parts.size >= 2) {
+                val payload = parts[1]
+                val decodedBytes = Base64.decode(payload, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+                val json = JSONObject(String(decodedBytes, Charsets.UTF_8))
+                json.optString("url", snapUrl)
+            } else {
+                snapUrl
+            }
+        } catch (_: Exception) {
+            snapUrl
+        }
     }
 
     suspend fun probe(url: String): ProbeResult = withContext(Dispatchers.IO) {
@@ -81,110 +100,114 @@ object NetworkProbe {
             )
         }
 
-        // 2. Facebook Video Extraction
+        // 2. Facebook Video Direct Extraction
         if (analysis.platform == PlatformType.FACEBOOK) {
-            var extractedVideoUrl: String? = null
-            var thumbUrl: String? = null
+            var directMp4Url: String? = null
             var fbTitle = "Facebook Video"
+            var fbThumb: String? = null
             var qualityLabel = "HD"
 
+            // Method A: Direct resolver endpoint
             try {
-                val fbRequest = Request.Builder()
-                    .url(targetUrl)
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
-                    .header("Accept-Language", "en-US,en;q=0.9")
+                val resolverUrl = "https://api.siputzx.my.id/api/d/facebook?url=${URLEncoder.encode(targetUrl, "UTF-8")}"
+                val req = Request.Builder()
+                    .url(resolverUrl)
+                    .header("User-Agent", "Mozilla/5.0 VideoSaver/2.0")
                     .build()
-
-                val fbResponse = client.newCall(fbRequest).execute()
-                if (fbResponse.isSuccessful) {
-                    val html = fbResponse.body?.string() ?: ""
-
-                    // Extract HD URL
-                    val hdPattern = Pattern.compile("\"(?:browser_native_hd_url|playable_url_quality_hd|hd_src)\"\\s*:\\s*\"([^\"]+)\"")
-                    val hdMatcher = hdPattern.matcher(html)
-                    if (hdMatcher.find()) {
-                        extractedVideoUrl = cleanEscapedUrl(hdMatcher.group(1))
-                        qualityLabel = "HD"
-                    }
-
-                    // Extract SD URL if HD not found
-                    if (extractedVideoUrl == null) {
-                        val sdPattern = Pattern.compile("\"(?:browser_native_sd_url|playable_url|sd_src)\"\\s*:\\s*\"([^\"]+)\"")
-                        val sdMatcher = sdPattern.matcher(html)
-                        if (sdMatcher.find()) {
-                            extractedVideoUrl = cleanEscapedUrl(sdMatcher.group(1))
-                            qualityLabel = "SD"
+                val res = client.newCall(req).execute()
+                if (res.isSuccessful) {
+                    val body = res.body?.string()
+                    if (!body.isNullOrEmpty()) {
+                        val root = JSONObject(body)
+                        if (root.optBoolean("status", false)) {
+                            val data = root.optJSONObject("data")
+                            if (data != null) {
+                                fbTitle = data.optString("title", fbTitle).ifEmpty { "Facebook Video" }
+                                fbThumb = data.optString("thumbnail", null)
+                                val downloads = data.optJSONArray("downloads")
+                                if (downloads != null && downloads.length() > 0) {
+                                    val firstItem = downloads.getJSONObject(0)
+                                    val snapUrl = firstItem.optString("url", "")
+                                    qualityLabel = firstItem.optString("quality", "HD")
+                                    if (snapUrl.isNotEmpty()) {
+                                        // Extract direct FBCDN url from token or use snapUrl
+                                        directMp4Url = extractFbCdnFromToken(snapUrl)
+                                    }
+                                }
+                            }
                         }
-                    }
-
-                    // Extract og:video if still null
-                    if (extractedVideoUrl == null) {
-                        val ogPattern = Pattern.compile("<meta\\s+(?:property|name)=\"og:video(?:\\:secure_url|\\:url)?\"\\s+content=\"([^\"]+)\"")
-                        val ogMatcher = ogPattern.matcher(html)
-                        if (ogMatcher.find()) {
-                            extractedVideoUrl = cleanEscapedUrl(ogMatcher.group(1))
-                            qualityLabel = "Standard"
-                        }
-                    }
-
-                    // Extract thumbnail
-                    val thumbPattern = Pattern.compile("<meta\\s+(?:property|name)=\"og:image\"\\s+content=\"([^\"]+)\"")
-                    val thumbMatcher = thumbPattern.matcher(html)
-                    if (thumbMatcher.find()) {
-                        thumbUrl = cleanEscapedUrl(thumbMatcher.group(1))
-                    }
-
-                    // Extract title
-                    val titlePattern = Pattern.compile("<meta\\s+(?:property|name)=\"og:title\"\\s+content=\"([^\"]+)\"")
-                    val titleMatcher = titlePattern.matcher(html)
-                    if (titleMatcher.find()) {
-                        fbTitle = titleMatcher.group(1).replace("&amp;", "&").replace("&quot;", "\"")
                     }
                 }
             } catch (_: Exception) {}
 
-            if (extractedVideoUrl != null && extractedVideoUrl.startsWith("http")) {
-                return@withContext ProbeResult(
-                    url = extractedVideoUrl,
-                    platform = PlatformType.FACEBOOK,
-                    isDirectMedia = true,
-                    contentType = "video/mp4",
-                    contentLength = null,
-                    formattedSize = "$qualityLabel MP4",
-                    filename = "facebook_${System.currentTimeMillis() % 10000}.mp4",
-                    title = fbTitle,
-                    thumbnailUrl = thumbUrl,
-                    authorName = "Facebook Video ($qualityLabel)",
-                    supportsRanges = true,
-                    canDownloadDirectly = true,
-                    messageBn = "ফেসবুক $qualityLabel ভিডিও সফলভাবে প্রস্তুত হয়েছে! নিচে 'ভিডিও ডাউনলোড করুন' বাটনে চাপ দিয়ে ফোনে সেভ করুন।",
-                    messageEn = "Facebook $qualityLabel video extracted successfully! Tap 'Download Video' to save to your Android device."
-                )
-            } else {
-                // If extraction requires user login session (private/friends-only reel)
-                // Provide dedicated fallback download resolver URL
-                val resolverUrl = "https://fdownloader.net/download?k_url=${URLEncoder.encode(targetUrl, "UTF-8")}"
-                return@withContext ProbeResult(
-                    url = resolverUrl,
-                    platform = PlatformType.FACEBOOK,
-                    isDirectMedia = true,
-                    contentType = "video/mp4",
-                    contentLength = null,
-                    formattedSize = "MP4 Options",
-                    filename = "facebook_video.mp4",
-                    title = fbTitle,
-                    thumbnailUrl = thumbUrl,
-                    authorName = "Facebook Post",
-                    supportsRanges = true,
-                    canDownloadDirectly = true,
-                    messageBn = "ফেসবুক ভিডিওর সরাসরি ডাউনলোড অপশন তৈরি করা হয়েছে। নিচে 'ভিডিও ডাউনলোড করুন' বাটনে চাপ দিন।",
-                    messageEn = "Facebook video download options ready. Tap 'Download Video' below to save."
-                )
+            // Method B: Fallback HTML scraping
+            if (directMp4Url == null) {
+                try {
+                    val fbRequest = Request.Builder()
+                        .url(targetUrl)
+                        .header("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+                        .build()
+                    val fbResponse = client.newCall(fbRequest).execute()
+                    if (fbResponse.isSuccessful) {
+                        val html = fbResponse.body?.string() ?: ""
+
+                        val hdPattern = Pattern.compile("\"(?:browser_native_hd_url|playable_url_quality_hd|hd_src)\"\\s*:\\s*\"([^\"]+)\"")
+                        val hdMatcher = hdPattern.matcher(html)
+                        if (hdMatcher.find()) {
+                            directMp4Url = cleanEscapedUrl(hdMatcher.group(1))
+                            qualityLabel = "HD"
+                        } else {
+                            val sdPattern = Pattern.compile("\"(?:browser_native_sd_url|playable_url|sd_src)\"\\s*:\\s*\"([^\"]+)\"")
+                            val sdMatcher = sdPattern.matcher(html)
+                            if (sdMatcher.find()) {
+                                directMp4Url = cleanEscapedUrl(sdMatcher.group(1))
+                                qualityLabel = "SD"
+                            }
+                        }
+
+                        val thumbPattern = Pattern.compile("<meta\\s+(?:property|name)=\"og:image\"\\s+content=\"([^\"]+)\"")
+                        val thumbMatcher = thumbPattern.matcher(html)
+                        if (thumbMatcher.find()) {
+                            fbThumb = cleanEscapedUrl(thumbMatcher.group(1))
+                        }
+
+                        val titlePattern = Pattern.compile("<meta\\s+(?:property|name)=\"og:title\"\\s+content=\"([^\"]+)\"")
+                        val titleMatcher = titlePattern.matcher(html)
+                        if (titleMatcher.find()) {
+                            fbTitle = titleMatcher.group(1).replace("&amp;", "&").replace("&quot;", "\"")
+                        }
+                    }
+                } catch (_: Exception) {}
             }
+
+            val finalDownloadUrl = directMp4Url ?: targetUrl
+            val isDirectResolved = directMp4Url != null
+
+            return@withContext ProbeResult(
+                url = finalDownloadUrl,
+                platform = PlatformType.FACEBOOK,
+                isDirectMedia = true,
+                contentType = "video/mp4",
+                contentLength = null,
+                formattedSize = "$qualityLabel MP4",
+                filename = "facebook_${System.currentTimeMillis() % 10000}.mp4",
+                title = fbTitle,
+                thumbnailUrl = fbThumb,
+                authorName = "Facebook Video ($qualityLabel)",
+                supportsRanges = true,
+                canDownloadDirectly = isDirectResolved,
+                messageBn = if (isDirectResolved)
+                    "ফেসবুক $qualityLabel ভিডিও সরাসরি প্রস্তুত হয়েছে! নিচের 'ভিডিও ডাউনলোড করুন' বাটনে চাপলে সরাসরি ফোনে সেভ হবে।"
+                else
+                    "ফেসবুক ভিডিও পেজ সনাক্ত হয়েছে। ডাউনলোডের জন্য লিঙ্কটি ব্রাউজারে খুলুন বা সরাসরি সেভ করুন।",
+                messageEn = if (isDirectResolved)
+                    "Facebook $qualityLabel video ready! Tap 'Download Video' to save directly to Downloads."
+                else
+                    "Facebook video stream ready."
+            )
         }
 
-        // 3. Network probe with HEAD or minimal Range GET for other links
+        // 3. Network probe for other links
         var contentType: String? = null
         var contentLength: Long? = null
         var supportsRanges = false
