@@ -1,38 +1,47 @@
-const CACHE_NAME = 'videosaver-pwa-v2';
-const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './manifest.json'
-];
+const CACHE_NAME = 'videosaver-pwa-v3';
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
-  );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
       );
     }).then(() => self.clients.claim())
   );
 });
 
+// Network-First strategy: Always fetch latest files from GitHub Pages
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  // Let external media requests stream directly without caching
   const url = new URL(event.request.url);
-  if (url.origin !== location.origin) {
+
+  // If external video download or proxy request: do not cache
+  if (url.origin !== location.origin || url.pathname.endsWith('.mp4')) {
     return;
   }
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request);
-    }).catch(() => caches.match('./index.html'))
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        // Fall back to cache if user is offline
+        return caches.match(event.request).then((cached) => cached || caches.match('./index.html'));
+      })
   );
 });

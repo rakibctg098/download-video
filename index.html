@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Video Saver - Mobile Web Video Downloader</title>
   <meta name="description" content="Fast, lightweight, mobile-first video saver and link inspector for Android Chrome and desktop browsers.">
   <meta name="theme-color" content="#0B0F19">
@@ -79,7 +82,7 @@
       background: rgba(16, 185, 129, 0.2);
       color: var(--emerald);
       border: 1px solid var(--emerald);
-      padding: 1px 6px;
+      padding: 2px 6px;
       border-radius: 4px;
       font-weight: 700;
     }
@@ -90,7 +93,7 @@
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
     .ram-pill {
       font-size: 10px;
@@ -107,7 +110,17 @@
       color: var(--cyan);
       font-size: 11px;
       font-weight: 600;
-      padding: 6px 12px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .refresh-btn {
+      background: rgba(244, 63, 94, 0.15);
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      color: #FDA4AF;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 8px;
       border-radius: 8px;
       cursor: pointer;
     }
@@ -253,7 +266,7 @@
     }
     .badge-direct { background: rgba(16, 185, 129, 0.2); color: var(--emerald); border: 1px solid var(--emerald); }
     .badge-youtube { background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid #EF4444; }
-    .badge-facebook { background: rgba(24, 119, 242, 0.2); color: #60A5FA; border: 1px solid #1877F2; }
+    .badge-facebook { background: rgba(24, 119, 242, 0.25); color: #60A5FA; border: 1px solid #1877F2; }
     .badge-social { background: rgba(59, 130, 246, 0.2); color: #3B82F6; border: 1px solid #3B82F6; }
     .notice-box {
       background: rgba(99, 102, 241, 0.12);
@@ -265,7 +278,7 @@
       color: #C7D2FE;
     }
     .btn-green {
-      background: var(--emerald);
+      background: linear-gradient(135deg, var(--emerald), #059669);
       color: #000;
       font-weight: 700;
       font-size: 13px;
@@ -283,6 +296,22 @@
     .btn-blue {
       background: linear-gradient(135deg, #1877F2, #2563EB);
       color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-cyan {
+      background: linear-gradient(135deg, #06B6D4, #0891B2);
+      color: #000;
       font-weight: 700;
       font-size: 13px;
       padding: 12px;
@@ -351,9 +380,13 @@
       justify-content: space-between;
       gap: 10px;
     }
-    .fb-options-grid {
-      display: grid;
-      grid-template-columns: 1fr;
+    .fb-action-card {
+      background: rgba(24, 119, 242, 0.08);
+      border: 1px solid rgba(24, 119, 242, 0.3);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
       gap: 8px;
     }
   </style>
@@ -367,13 +400,13 @@
       <div>
         <div class="brand-title">
           <span id="txtAppTitle">Video Saver</span>
-          <span class="version-tag">PWA v2.2</span>
+          <span class="version-tag">v2.3 (Latest)</span>
         </div>
         <div class="brand-sub" id="txtAppSub">Safe Mobile Downloader</div>
       </div>
     </div>
     <div class="header-actions">
-      <div class="ram-pill">4GB RAM Safe</div>
+      <button class="refresh-btn" onclick="forceClearCacheAndReload()" title="নতুন আপডেট লোড করতে চাপুন">&#8635; আপডেট</button>
       <button class="lang-btn" id="btnToggleLang" onclick="toggleLanguage()">বাংলা</button>
     </div>
   </header>
@@ -466,30 +499,35 @@
           Notice message
         </div>
 
-        <!-- Download Buttons Section -->
+        <!-- ALWAYS VISIBLE DOWNLOAD ACTION GROUP -->
         <div id="downloadActionGroup" style="display: flex; flex-direction: column; gap: 8px;">
-          <!-- Primary Stream Download -->
+
+          <!-- Direct Stream / In-Browser Download -->
           <button id="btnStreamDownload" class="btn-green" onclick="startStreamDownload()">
             <span>&#10515;</span>
             <span id="txtBtnStream">ভিডিও ডাউনলোড করুন (MP4)</span>
           </button>
 
-          <!-- Facebook Dedicated Downloader Options -->
-          <div id="fbOptionsContainer" class="fb-options-grid" style="display: none;">
-            <a id="btnFbSnap" class="btn-blue" href="#" target="_blank" rel="noopener noreferrer">
+          <!-- Dedicated Facebook Options Group (Always ready for Facebook) -->
+          <div id="fbOptionsContainer" class="fb-action-card" style="display: none;">
+            <div style="font-size: 12px; font-weight: 700; color: #60A5FA; display: flex; align-items: center; gap: 4px;">
               <span>&#9889;</span>
-              <span id="txtBtnFbSnap">HD ভিডিও ডাউনলোড করুন (Fast Resolver)</span>
+              <span id="txtFbGroupHeader">ফেসবুক ডাউনলোড অপশনসমূহ (HD / SD):</span>
+            </div>
+            <a id="btnFbSnap" class="btn-blue" href="#" target="_blank" rel="noopener noreferrer">
+              <span>&#10515;</span>
+              <span id="txtBtnFbSnap">সার্ভার ১: HD কোয়ালিটি ডাউনলোড (SnapSave)</span>
             </a>
-            <a id="btnFbDownloader" class="btn-outline" style="border-color: #1877F2; color: #60A5FA;" href="#" target="_blank" rel="noopener noreferrer">
-              <span>&#128190;</span>
-              <span id="txtBtnFbDown">SD ভিডিও ডাউনলোড করুন (FDownloader)</span>
+            <a id="btnFbDownloader" class="btn-cyan" href="#" target="_blank" rel="noopener noreferrer">
+              <span>&#10515;</span>
+              <span id="txtBtnFbDown">সার্ভার ২: SD কোয়ালিটি ডাউনলোড (FDownloader)</span>
             </a>
           </div>
 
           <!-- Chrome Native Download Fallback -->
           <a id="btnDirectDownload" class="btn-outline" href="#" download>
             <span>&#128279;</span>
-            <span id="txtBtnDirect">Chrome Native Download (বিকল্প)</span>
+            <span id="txtBtnDirect">Chrome Native Download (সরাসরি ব্রাউজারে)</span>
           </a>
 
           <!-- Open in Browser -->
@@ -537,9 +575,9 @@
       </div>
 
       <div class="card">
-        <h3 style="margin: 0; font-size: 15px;" id="gTitle4">৪. PWA হিসেবে হোম স্ক্রিনে যোগ করা</h3>
+        <h3 style="margin: 0; font-size: 15px;" id="gTitle4">৪. ক্যাশ ক্লিয়ার ও আপডেট</h3>
         <p style="font-size: 12px; color: var(--text-sec); line-height: 1.6;" id="gDesc4">
-          Google Chrome ব্রাউজারে উপরে ডানদিকের ৩-ডট (⋮) চাপুন এবং "Add to Home screen" বা "Install App" চাপলে এটি একটি স্বতন্ত্র অ্যাপ হিসেবে ইনস্টল হবে।
+          যদি পূর্বে ভিজিট করা পুরোনো পেজ দেখা যায়, তবে ওপরের ডানদিকের "&#8635; আপডেট" বাটনে চাপুন অথবা ক্রোম ব্রাউজারের ব্রাউজিং ডাটা থেকে ক্যাশ মুছে পেজটি রিফ্রেশ করুন।
         </p>
       </div>
     </div>
@@ -584,11 +622,29 @@
     let abortController = null;
     let deferredPrompt = null;
 
-    // PWA Service Worker Registration
+    // Instant Cache Buster & Service Worker Update
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (let registration of registrations) {
+          registration.update();
+        }
       });
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js?v=3').catch(() => {});
+      });
+    }
+
+    // Force Clear Cache Function
+    function forceClearCacheAndReload() {
+      if (window.caches) {
+        caches.keys().then((names) => {
+          return Promise.all(names.map((name) => caches.delete(name)));
+        }).then(() => {
+          location.href = location.pathname + '?refresh=' + Date.now();
+        });
+      } else {
+        location.href = location.pathname + '?refresh=' + Date.now();
+      }
     }
 
     // PWA Install prompt listener
@@ -625,9 +681,10 @@
       document.getElementById('txtSamples').innerText = isBn ? 'টেস্ট করার জন্য স্যাম্পল লিঙ্ক:' : 'Quick test sample links:';
       document.getElementById('btnCancel').innerText = isBn ? 'ডাউনলোড বাতিল করুন' : 'Cancel Download';
       document.getElementById('txtBtnStream').innerText = isBn ? 'ভিডিও ডাউনলোড করুন (MP4)' : 'Download Video (MP4)';
-      document.getElementById('txtBtnFbSnap').innerText = isBn ? 'HD ভিডিও ডাউনলোড করুন (Fast Resolver)' : 'Download HD Video (Fast Resolver)';
-      document.getElementById('txtBtnFbDown').innerText = isBn ? 'SD ভিডিও ডাউনলোড করুন (FDownloader)' : 'Download SD Video (FDownloader)';
-      document.getElementById('txtBtnDirect').innerText = isBn ? 'Chrome Native Download (বিকল্প)' : 'Chrome Native Download (Fallback)';
+      document.getElementById('txtFbGroupHeader').innerText = isBn ? 'ফেসবুক ডাউনলোড অপশনসমূহ (HD / SD):' : 'Facebook Download Options (HD / SD):';
+      document.getElementById('txtBtnFbSnap').innerText = isBn ? 'সার্ভার ১: HD কোয়ালিটি ডাউনলোড (SnapSave)' : 'Server 1: HD Download (SnapSave)';
+      document.getElementById('txtBtnFbDown').innerText = isBn ? 'সার্ভার ২: SD কোয়ালিটি ডাউনলোড (FDownloader)' : 'Server 2: SD Download (FDownloader)';
+      document.getElementById('txtBtnDirect').innerText = isBn ? 'Chrome Native Download (সরাসরি ব্রাউজারে)' : 'Chrome Native Download';
       document.getElementById('txtBtnBrowser').innerText = isBn ? 'আসল ভিডিও খুলুন' : 'Open Original Video';
       document.getElementById('txtHistTitle').innerText = isBn ? 'ডাউনলোড ও লিংক হিস্ট্রি' : 'Download & Link History';
       document.getElementById('btnClearAll').innerText = isBn ? 'সব মুছুন' : 'Clear All';
@@ -702,63 +759,41 @@
       document.getElementById('txtBtnValidate').innerText = isBn ? 'যাচাই করা হচ্ছে...' : 'Validating...';
 
       const urlLower = url.toLowerCase();
-      const isFacebook = urlLower.includes('facebook.com') || urlLower.includes('fb.watch');
+      const isFacebook = urlLower.includes('facebook.com') || urlLower.includes('fb.watch') || urlLower.includes('fb.me');
       const isYouTube = urlLower.includes('youtube.com') || urlLower.includes('youtu.be');
       const isPinterest = urlLower.includes('pinterest.com') || urlLower.includes('pin.it');
       const isDirect = urlLower.includes('.mp4') || urlLower.includes('.webm') || urlLower.includes('.mkv') || urlLower.includes('.mov');
 
-      let title = isFacebook ? 'Facebook Video' : (isDirect ? url.substring(url.lastIndexOf('/') + 1).split('?')[0] : 'Web Video Link');
+      let title = isFacebook ? 'Facebook Video / Reel' : (isDirect ? url.substring(url.lastIndexOf('/') + 1).split('?')[0] : 'Web Video Link');
       let thumb = null;
       let filename = isFacebook ? 'facebook_' + Date.now().toString().slice(-4) + '.mp4' : (isDirect ? title : 'video.mp4');
       let extractedDirectUrl = null;
-      let hdUrl = null;
-      let sdUrl = null;
 
-      // 1. FACEBOOK EXTRACTION
+      // 1. FACEBOOK HANDLING: ALWAYS PREPARE DOWNLOAD OPTIONS IMMEDIATELY
       if (isFacebook) {
         document.getElementById('chipFb').classList.add('active');
         document.getElementById('chipAll').classList.remove('active');
 
+        // Fast background extraction attempt
         try {
-          // Attempt extraction via fast transparent CORS proxy
           const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-          const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
+          const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(4000) });
           if (res.ok) {
             const html = await res.text();
-
-            // HD pattern
             const hdMatch = html.match(/"(?:browser_native_hd_url|playable_url_quality_hd|hd_src)"\s*:\s*"([^"]+)"/);
-            if (hdMatch) {
-              hdUrl = cleanUrl(hdMatch[1]);
-              extractedDirectUrl = hdUrl;
-            }
-
-            // SD pattern
             const sdMatch = html.match(/"(?:browser_native_sd_url|playable_url|sd_src)"\s*:\s*"([^"]+)"/);
-            if (sdMatch) {
-              sdUrl = cleanUrl(sdMatch[1]);
-              if (!extractedDirectUrl) extractedDirectUrl = sdUrl;
-            }
-
-            // og:video
-            if (!extractedDirectUrl) {
-              const ogMatch = html.match(/<meta\s+(?:property|name)="og:video(?::secure_url|:url)?"\s+content="([^"]+)"/i);
-              if (ogMatch) {
-                extractedDirectUrl = cleanUrl(ogMatch[1]);
-              }
-            }
-
-            // Thumbnail
+            const ogMatch = html.match(/<meta\s+(?:property|name)="og:video(?::secure_url|:url)?"\s+content="([^"]+)"/i);
             const thumbMatch = html.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i);
-            if (thumbMatch) thumb = cleanUrl(thumbMatch[1]);
-
-            // Title
             const titleMatch = html.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i);
+
+            if (hdMatch) extractedDirectUrl = cleanUrl(hdMatch[1]);
+            else if (sdMatch) extractedDirectUrl = cleanUrl(sdMatch[1]);
+            else if (ogMatch) extractedDirectUrl = cleanUrl(ogMatch[1]);
+
+            if (thumbMatch) thumb = cleanUrl(thumbMatch[1]);
             if (titleMatch) title = titleMatch[1].replace(/&amp;/g, '&').replace(/&quot;/g, '"');
           }
-        } catch (_) {
-          // Fallback seamlessly handled below
-        }
+        } catch (_) {}
       }
 
       // 2. YOUTUBE EXTRACTION
@@ -781,9 +816,7 @@
         platform: isFacebook ? 'facebook' : (isYouTube ? 'youtube' : (isPinterest ? 'pinterest' : (isDirect ? 'direct' : 'web'))),
         isDirect: isDirect || (extractedDirectUrl !== null),
         isFacebook,
-        thumbnail: thumb,
-        hdUrl,
-        sdUrl
+        thumbnail: thumb
       };
 
       // Populate Result Card
@@ -812,24 +845,25 @@
 
       btnBrowser.href = url;
 
-      // Facebook handling
+      // SPECIFIC PLATFORM DISPLAY RULES:
       if (isFacebook) {
         notice.innerText = isBn
-          ? 'ফেসবুক ভিডিওর সরাসরি ডাউনলোড অপশন তৈরি হয়েছে! নিচে থাকা ডাউনলোড বাটনগুলো দিয়ে HD বা SD কোয়ালিটিতে ভিডিওটি ফোনে সেভ করুন।'
-          : 'Facebook video download options ready! Use the buttons below to save in HD or SD quality to your phone.';
+          ? 'ফেসবুক ভিডিও ডাউনলোডের জন্য প্রস্তুত! নিচের যে কোনো বাটন চেপে HD বা SD কোয়ালিটিতে সরাসরি ফোনে সেভ করুন।'
+          : 'Facebook video ready for download! Tap any button below to save directly in HD or SD quality.';
         notice.style.borderColor = '#1877F2';
 
-        // Show Facebook dedicated resolvers pre-filled with the exact video link
-        fbOptions.style.display = 'grid';
-        btnFbSnap.href = 'https://fdownloader.net/download?k_url=' + encodeURIComponent(url);
-        btnFbDown.href = 'https://snapsave.app/#url=' + encodeURIComponent(url);
+        // Display Facebook Dedicated Resolvers prefilled with exact URL
+        fbOptions.style.display = 'flex';
+        btnFbSnap.href = 'https://snapsave.app/#url=' + encodeURIComponent(url);
+        btnFbDown.href = 'https://fdownloader.net/download?k_url=' + encodeURIComponent(url);
 
-        // Show stream download
+        // Display Stream Download Button
         btnStream.style.display = 'flex';
-        btnStream.innerHTML = '<span>&#10515;</span> <span>' + (isBn ? 'ভিডিও ডাউনলোড করুন (MP4)' : 'Download Video (MP4)') + '</span>';
+        btnStream.innerHTML = '<span>&#10515;</span> <span>' + (isBn ? 'ভিডিও ডাউনলোড করুন (MP4 Save)' : 'Download Video (MP4 Save)') + '</span>';
 
+        // Chrome Native Download
         btnDirect.style.display = 'flex';
-        btnDirect.href = extractedDirectUrl || ('https://fdownloader.net/download?k_url=' + encodeURIComponent(url));
+        btnDirect.href = extractedDirectUrl || ('https://snapsave.app/#url=' + encodeURIComponent(url));
         btnDirect.download = currentProbe.filename;
       } else if (isDirect || extractedDirectUrl) {
         notice.innerText = isBn
@@ -876,9 +910,9 @@
       const speedBadge = document.getElementById('speedBadge');
       const progressTitle = document.getElementById('progressTitle');
 
-      // If Facebook resolver link: open directly
+      // If Facebook resolver link: open resolver
       if (currentProbe.isFacebook && !downloadTarget.includes('.fbcdn.net') && !downloadTarget.endsWith('.mp4')) {
-        window.open('https://fdownloader.net/download?k_url=' + encodeURIComponent(currentProbe.url), '_blank');
+        window.open('https://snapsave.app/#url=' + encodeURIComponent(currentProbe.url), '_blank');
         return;
       }
 
