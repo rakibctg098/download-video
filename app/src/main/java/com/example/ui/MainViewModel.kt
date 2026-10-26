@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import java.net.URLEncoder
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.db.AppDatabase
@@ -177,13 +178,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         if (probe.platform == PlatformType.YOUTUBE && !probe.url.endsWith(".mp4")) {
             val videoId = UrlAnalyzer.analyze(probe.url).videoId
-            val downloadUrl = if (!videoId.isNullOrEmpty()) "https://ssyoutube.com/watch?v=$videoId" else probe.url
+            val ytTarget = if (!videoId.isNullOrEmpty()) "https://www.youtube.com/watch?v=$videoId" else probe.url
+            val downloadUrl = "https://cobalt.tools/#" + URLEncoder.encode(ytTarget, "UTF-8")
             try {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 getApplication<Application>().startActivity(intent)
-                val msg = if (_settings.value.language == "bn") "ইউটিউব ডাউনলোডার পেজ খোলা হয়েছে।" else "YouTube downloader opened."
+                val msg = if (_settings.value.language == "bn") "ক্লিন নো-অ্যাড ইউটিউব ডাউনলোডার পেজ খোলা হয়েছে।" else "Clean ad-free YouTube downloader opened."
+                _toastMessage.value = Pair(msg, false)
+            } catch (_: Exception) {}
+            return
+        }
+
+        if (probe.platform == PlatformType.PINTEREST && !probe.url.contains(".mp4")) {
+            val downloadUrl = "https://cobalt.tools/#" + URLEncoder.encode(probe.url, "UTF-8")
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                getApplication<Application>().startActivity(intent)
+                val msg = if (_settings.value.language == "bn") "পিন্টারেস্ট ডাউনলোডার খোলা হয়েছে।" else "Pinterest downloader opened."
                 _toastMessage.value = Pair(msg, false)
             } catch (_: Exception) {}
             return

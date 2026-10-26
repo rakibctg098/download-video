@@ -214,57 +214,101 @@ object NetworkProbe {
             var pinThumb: String? = null
 
             try {
+                // Fetch page (OkHttp automatically follows 301/302 redirects from pin.it to pinterest.com/pin/...)
                 val req = Request.Builder()
                     .url(targetUrl)
-                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36")
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
                     .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                     .build()
                 val res = client.newCall(req).execute()
-                if (res.isSuccessful) {
-                    val html = res.body?.string() ?: ""
+                val finalUrl = res.request.url.toString()
+                val html = if (res.isSuccessful) res.body?.string() ?: "" else ""
 
-                    // Search for direct pinimg MP4 video URL
-                    val mp4Pattern = Pattern.compile("(https://v1\\.pinimg\\.com/videos/[^\"'<> ]+\\.mp4)")
-                    val mp4Matcher = mp4Pattern.matcher(html)
-                    if (mp4Matcher.find()) {
-                        directPinMp4 = mp4Matcher.group(1)
-                    } else {
-                        val anyMp4Pattern = Pattern.compile("(https://[a-zA-Z0-9.-]*pinimg\\.com/videos/[^\"'<> ]+\\.mp4)")
-                        val anyMatcher = anyMp4Pattern.matcher(html)
-                        if (anyMatcher.find()) {
-                            directPinMp4 = anyMatcher.group(1)
-                        } else {
-                            val m3u8Pattern = Pattern.compile("(https://v1\\.pinimg\\.com/videos/[^\"'<> ]+\\.m3u8)")
-                            val m3u8Matcher = m3u8Pattern.matcher(html)
-                            if (m3u8Matcher.find()) {
-                                directPinMp4 = m3u8Matcher.group(1).replace("hls", "720p").replace(".m3u8", ".mp4")
+                // 1. Extract Pin ID from finalUrl or HTML
+                var pinId: String? = null
+                val idMatchUrl = Pattern.compile("/pin/(\\d+)").matcher(finalUrl)
+                if (idMatchUrl.find()) {
+                    pinId = idMatchUrl.group(1)
+                } else if (html.isNotEmpty()) {
+                    val idMatchHtml = Pattern.compile("/pin/(\\d+)").matcher(html)
+                    if (idMatchHtml.find()) {
+                        pinId = idMatchHtml.group(1)
+                    }
+                }
+
+                // 2. Try official Pinterest widget API
+                if (!pinId.isNullOrEmpty()) {
+                    try {
+                        val widgetUrl = "https://widgets.pinterest.com/v3/pidgets/pins/info/?pin_ids=$pinId"
+                        val wReq = Request.Builder()
+                            .url(widgetUrl)
+                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                            .build()
+                        val wRes = client.newCall(wReq).execute()
+                        if (wRes.isSuccessful) {
+                            val wBody = wRes.body?.string() ?: ""
+                            val wJson = JSONObject(wBody)
+                            val dataArr = wJson.optJSONArray("data")
+                            if (dataArr != null && dataArr.length() > 0) {
+                                val pinObj = dataArr.getJSONObject(0)
+                                val desc = pinObj.optString("description", "")
+                                if (desc.isNotEmpty()) pinTitle = desc
+
+                                val images = pinObj.optJSONObject("images")
+                                if (images != null) {
+                                    val img564 = images.optJSONObject("564x")
+                                    val img236 = images.optJSONObject("236x")
+                                    pinThumb = img564?.optString("url") ?: img236?.optString("url")
+                                }
+
+                                val videos = pinObj.optJSONObject("videos")
+                                if (videos != null) {
+                                    val vList = videos.optJSONObject("video_list")
+                                    if (vList != null) {
+                                        val v720 = vList.optJSONObject("V_720P")
+                                        val vExp7 = vList.optJSONObject("V_EXP7")
+                                        val vHls = vList.optJSONObject("V_HLSV4")
+                                        if (v720 != null && v720.has("url")) {
+                                            directPinMp4 = v720.optString("url")
+                                        } else if (vExp7 != null && vExp7.has("url")) {
+                                            directPinMp4 = vExp7.optString("url")
+                                        } else if (vHls != null && vHls.has("url")) {
+                                            val hlsUrl = vHls.optString("url")
+                                            directPinMp4 = hlsUrl.replace("/hls/", "/720p/").replace(".m3u8", ".mp4")
+                                        }
+                                    }
+                                }
                             }
                         }
-                    }
+                    } catch (_: Exception) {}
+                }
 
-                    // Extract Title
-                    val titlePattern = Pattern.compile("\"seoTitle\"\\s*:\\s*\"([^\"]+)\"")
-                    val titleMatcher = titlePattern.matcher(html)
-                    if (titleMatcher.find()) {
-                        pinTitle = titleMatcher.group(1).replace("&amp;", "&").replace("&quot;", "\"")
+                // 3. Fallback: Parse HTML for pinimg video URLs
+                if (directPinMp4 == null && html.isNotEmpty()) {
+                    val anyMp4Pattern = Pattern.compile("https://[a-zA-Z0-9.-]*pinimg\\.com/videos/[^\"'<> ]+\\.mp4")
+                    val anyMatcher = anyMp4Pattern.matcher(html)
+                    if (anyMatcher.find()) {
+                        directPinMp4 = cleanEscapedUrl(anyMatcher.group(0))
                     } else {
-                        val ogTitle = Pattern.compile("<meta\\s+(?:property|name)=\"og:title\"\\s+content=\"([^\"]+)\"")
-                        val ogMatcher = ogTitle.matcher(html)
-                        if (ogMatcher.find()) {
-                            pinTitle = ogMatcher.group(1).replace("&amp;", "&").replace("&quot;", "\"")
+                        val m3u8Pattern = Pattern.compile("https://[a-zA-Z0-9.-]*pinimg\\.com/videos/[^\"'<> ]+\\.m3u8")
+                        val m3u8Matcher = m3u8Pattern.matcher(html)
+                        if (m3u8Matcher.find()) {
+                            directPinMp4 = cleanEscapedUrl(m3u8Matcher.group(0)).replace("/hls/", "/720p/").replace(".m3u8", ".mp4")
                         }
                     }
 
-                    // Extract Thumbnail
-                    val thumbPattern = Pattern.compile("\"imageLargeUrl\"\\s*:\\s*\"([^\"]+)\"")
-                    val thumbMatcher = thumbPattern.matcher(html)
-                    if (thumbMatcher.find()) {
-                        pinThumb = thumbMatcher.group(1)
-                    } else {
-                        val ogThumb = Pattern.compile("<meta\\s+(?:property|name)=\"og:image\"\\s+content=\"([^\"]+)\"")
-                        val ogThumbMatcher = ogThumb.matcher(html)
-                        if (ogThumbMatcher.find()) {
-                            pinThumb = ogThumbMatcher.group(1)
+                    if (pinTitle == "Pinterest Video") {
+                        val titlePattern = Pattern.compile("\"seoTitle\"\\s*:\\s*\"([^\"]+)\"")
+                        val titleMatcher = titlePattern.matcher(html)
+                        if (titleMatcher.find()) {
+                            pinTitle = cleanEscapedUrl(titleMatcher.group(1))
+                        }
+                    }
+                    if (pinThumb == null) {
+                        val thumbPattern = Pattern.compile("\"imageLargeUrl\"\\s*:\\s*\"([^\"]+)\"")
+                        val thumbMatcher = thumbPattern.matcher(html)
+                        if (thumbMatcher.find()) {
+                            pinThumb = cleanEscapedUrl(thumbMatcher.group(1))
                         }
                     }
                 }
@@ -287,7 +331,7 @@ object NetworkProbe {
                 messageBn = if (isResolved)
                     "পিন্টারেস্ট HD ভিডিও সরাসরি প্রস্তুত হয়েছে! নিচের 'ভিডিও ডাউনলোড করুন' বাটনে চাপলে সরাসরি ফোনে সেভ হবে।"
                 else
-                    "পিন্টারেস্ট ভিডিও পেজ সনাক্ত হয়েছে। ডাউনলোডের জন্য লিঙ্কটি ব্রাউজারে খুলুন বা সরাসরি সেভ করুন।",
+                    "পিন্টারেস্ট ভিডিও লিঙ্ক পাওয়া গেছে! ডাউনলোড বাটনে চাপুন।",
                 messageEn = if (isResolved)
                     "Pinterest HD video ready! Tap 'Download Video' to save directly to Downloads."
                 else

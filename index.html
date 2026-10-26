@@ -373,7 +373,7 @@
       <div>
         <div class="brand-title">
           <span id="txtAppTitle">Video Saver</span>
-          <span class="version-tag">v2.5 (Pro Direct)</span>
+          <span class="version-tag">v2.6 (Pro Direct)</span>
         </div>
         <div class="brand-sub" id="txtAppSub">Safe Direct Downloader</div>
       </div>
@@ -579,7 +579,7 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=5').catch(() => {});
+        navigator.serviceWorker.register('./sw.js?v=6').catch(() => {});
       });
     }
 
@@ -800,40 +800,100 @@
         title = 'Pinterest Video';
         filename = 'Pinterest_' + Date.now().toString().slice(-4) + '.mp4';
 
-        // Try extracting direct MP4 through CORS proxies
-        const proxyCandidates = [
-          'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
-          'https://corsproxy.org/?' + encodeURIComponent(url),
-          'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url)
-        ];
+        // 1. Extract Pin ID
+        let pinId = null;
+        const idMatch = url.match(/\/pin\/(\d+)/);
+        if (idMatch) pinId = idMatch[1];
 
-        for (const pUrl of proxyCandidates) {
-          try {
-            const pRes = await fetch(pUrl, { signal: AbortSignal.timeout(5000) });
-            if (pRes.ok) {
-              const html = await pRes.text();
-              const mp4Match = html.match(/https:\/\/(?:v1\.)?pinimg\.com\/videos\/[^\s"'<>]+\.mp4/);
-              const m3u8Match = html.match(/https:\/\/(?:v1\.)?pinimg\.com\/videos\/[^\s"'<>]+\.m3u8/);
-              const titleMatch = html.match(/"seoTitle"\s*:\s*"([^"]+)"/) || html.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i);
-              const thumbMatch = html.match(/"imageLargeUrl"\s*:\s*"([^"]+)"/) || html.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i);
+        // 2. Query official Pinterest widget API
+        const tryWidgetApi = async (pid) => {
+          const endpoints = [
+            'https://widgets.pinterest.com/v3/pidgets/pins/info/?pin_ids=' + pid,
+            'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://widgets.pinterest.com/v3/pidgets/pins/info/?pin_ids=' + pid),
+            'https://corsproxy.org/?' + encodeURIComponent('https://widgets.pinterest.com/v3/pidgets/pins/info/?pin_ids=' + pid)
+          ];
+          for (const ep of endpoints) {
+            try {
+              const res = await fetch(ep, { signal: AbortSignal.timeout(4000) });
+              if (res.ok) {
+                const text = await res.text();
+                const json = JSON.parse(text);
+                const pin = (json.data && json.data.length > 0) ? json.data[0] : null;
+                if (pin) {
+                  if (pin.description) title = pin.description;
+                  if (pin.images && pin.images['564x']) pinThumb = pin.images['564x'].url;
+                  else if (pin.images && pin.images['236x']) pinThumb = pin.images['236x'].url;
 
-              if (mp4Match) {
-                directPinMp4 = cleanUrl(mp4Match[0]);
-              } else if (m3u8Match) {
-                directPinMp4 = cleanUrl(m3u8Match[0]).replace('/hls/', '/720p/').replace('.m3u8', '.mp4');
+                  if (pin.videos && pin.videos.video_list) {
+                    const vl = pin.videos.video_list;
+                    if (vl.V_720P && vl.V_720P.url) return vl.V_720P.url;
+                    if (vl.V_EXP7 && vl.V_EXP7.url) return vl.V_EXP7.url;
+                    if (vl.V_HLSV4 && vl.V_HLSV4.url) return vl.V_HLSV4.url.replace('/hls/', '/720p/').replace('.m3u8', '.mp4');
+                    for (const k in vl) {
+                      if (vl[k] && vl[k].url) {
+                        return vl[k].url.replace('/hls/', '/720p/').replace('.m3u8', '.mp4');
+                      }
+                    }
+                  }
+                }
               }
+            } catch (_) {}
+          }
+          return null;
+        };
 
-              if (titleMatch) title = cleanUrl(titleMatch[1]);
-              if (thumbMatch) pinThumb = cleanUrl(thumbMatch[1]);
+        if (pinId) {
+          directPinMp4 = await tryWidgetApi(pinId);
+        }
 
-              if (directPinMp4) break;
+        // 3. Fallback: Parse page HTML through CORS proxies
+        if (!directPinMp4) {
+          const proxyCandidates = [
+            'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+            'https://corsproxy.org/?' + encodeURIComponent(url),
+            'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url)
+          ];
+
+          for (const pUrl of proxyCandidates) {
+            try {
+              const pRes = await fetch(pUrl, { signal: AbortSignal.timeout(5000) });
+              if (pRes.ok) {
+                const html = await pRes.text();
+                if (!pinId) {
+                  const mId = html.match(/\/pin\/(\d+)/);
+                  if (mId) {
+                    pinId = mId[1];
+                    const fromWidget = await tryWidgetApi(pinId);
+                    if (fromWidget) {
+                      directPinMp4 = fromWidget;
+                      break;
+                    }
+                  }
+                }
+
+                const mp4Match = html.match(/https:\/\/(?:[a-zA-Z0-9.-]+\.)?pinimg\.com\/videos\/[^\s"'<>]+\.mp4/);
+                const m3u8Match = html.match(/https:\/\/(?:[a-zA-Z0-9.-]+\.)?pinimg\.com\/videos\/[^\s"'<>]+\.m3u8/);
+                const titleMatch = html.match(/"seoTitle"\s*:\s*"([^"]+)"/) || html.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i);
+                const thumbMatch = html.match(/"imageLargeUrl"\s*:\s*"([^"]+)"/) || html.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i);
+
+                if (mp4Match) {
+                  directPinMp4 = cleanUrl(mp4Match[0]);
+                } else if (m3u8Match) {
+                  directPinMp4 = cleanUrl(m3u8Match[0]).replace('/hls/', '/720p/').replace('.m3u8', '.mp4');
+                }
+
+                if (titleMatch && title === 'Pinterest Video') title = cleanUrl(titleMatch[1]);
+                if (thumbMatch && !pinThumb) pinThumb = cleanUrl(thumbMatch[1]);
+
+                if (directPinMp4) break;
+              }
+            } catch (e) {
+              console.warn('Pinterest proxy attempt failed:', e);
             }
-          } catch (e) {
-            console.warn('Pinterest proxy attempt failed:', e);
           }
         }
 
-        // Fallback oEmbed for metadata
+        // 4. Fallback oEmbed for metadata
         if (!pinThumb) {
           try {
             const oRes = await fetch('https://www.pinterest.com/oembed.json?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(4000) });
@@ -847,6 +907,9 @@
         thumb = pinThumb || thumb;
       }
 
+      const ytCobaltUrl = ytVideoId ? ('https://cobalt.tools/#' + encodeURIComponent('https://www.youtube.com/watch?v=' + ytVideoId)) : ('https://cobalt.tools/#' + encodeURIComponent(url));
+      const pinFallbackUrl = 'https://cobalt.tools/#' + encodeURIComponent(url);
+
       currentProbe = {
         url,
         title,
@@ -858,8 +921,8 @@
         isDirect,
         videoId: ytVideoId,
         thumbnail: thumb,
-        hdUrl: isFacebook ? (directFbCdnUrl || hdDownloadUrl) : (isPinterest ? (directPinMp4 || url) : (isYouTube ? ('https://ssyoutube.com/watch?v=' + ytVideoId) : (isDirect ? url : null))),
-        sdUrl: isFacebook ? (sdDownloadUrl ? extractFbCdnUrl(sdDownloadUrl) : null) : (isYouTube ? ('https://ssyoutube.com/watch?v=' + ytVideoId) : null),
+        hdUrl: isFacebook ? (directFbCdnUrl || hdDownloadUrl) : (isPinterest ? (directPinMp4 || pinFallbackUrl) : (isYouTube ? ytCobaltUrl : (isDirect ? url : null))),
+        sdUrl: isFacebook ? (sdDownloadUrl ? extractFbCdnUrl(sdDownloadUrl) : null) : (isYouTube ? ytCobaltUrl : null),
         streamUrl: isFacebook ? (directFbCdnUrl || hdDownloadUrl) : (isPinterest ? directPinMp4 : (isDirect ? url : null))
       };
 
@@ -1003,19 +1066,20 @@
       // YouTube Download Flow
       if (currentProbe.isYouTube) {
         progressTitle.innerText = isBn ? 'ইউটিউব ডাউনলোড প্রস্তুত হচ্ছে...' : 'Preparing YouTube download...';
-        progressSub.innerText = isBn ? 'ডাউনলোড পেজ চালু হচ্ছে, পছন্দের কোয়ালিটি বেছে নিন।' : 'Opening fast downloader, choose your desired quality.';
+        progressSub.innerText = isBn ? 'ক্লিন নো-অ্যাড ডাউনলোডার চালু হচ্ছে, ডাউনলোড অপশন বেছে নিন।' : 'Opening clean ad-free downloader, choose format to save.';
 
-        const ytUrl = 'https://ssyoutube.com/watch?v=' + (currentProbe.videoId || '');
-        window.open(ytUrl, '_blank');
+        const ytTarget = 'https://www.youtube.com/watch?v=' + (currentProbe.videoId || '');
+        const ytCobalt = 'https://cobalt.tools/#' + encodeURIComponent(ytTarget);
+        window.open(ytCobalt, '_blank');
         return;
       }
 
-      // Pinterest without direct MP4
+      // Pinterest without direct MP4 stream fallback
       if (currentProbe.isPinterest && !currentProbe.streamUrl) {
         progressTitle.innerText = isBn ? 'পিন্টারেস্ট ডাউনলোড প্রস্তুত হচ্ছে...' : 'Preparing Pinterest download...';
-        progressSub.innerText = isBn ? 'সরাসরি ডাউনলোড পেজ চালু হচ্ছে...' : 'Opening direct Pinterest downloader...';
-        const pinDownUrl = 'https://pinterestvideodownloader.com/?url=' + encodeURIComponent(currentProbe.url);
-        window.open(pinDownUrl, '_blank');
+        progressSub.innerText = isBn ? 'ক্লিন ডাউনলোডার পেজ চালু হচ্ছে...' : 'Opening clean Pinterest downloader...';
+        const pinCobalt = 'https://cobalt.tools/#' + encodeURIComponent(currentProbe.url);
+        window.open(pinCobalt, '_blank');
         return;
       }
 
