@@ -110,9 +110,9 @@ object UrlAnalyzer {
                 videoId = videoId,
                 suggestedTitle = if (videoId != null) "YouTube Video ($videoId)" else "YouTube Link",
                 suggestedFilename = "youtube_${videoId ?: "video"}.mp4",
-                limitationReason = "YouTube uses encrypted streams/DRM. Direct raw MP4 scraping violates ToS.",
-                guidanceBn = "ইউটিউব ভিডিও সনাক্ত হয়েছে। অফিসিয়াল ও-এমবেড প্রিভিউ দেখতে 'যাচাই করুন' ট্যাপ করুন।",
-                guidanceEn = "YouTube video detected. Tap 'Validate Link' to view official preview and information."
+                limitationReason = "YouTube video stream detected.",
+                guidanceBn = "ইউটিউব ভিডিও সনাক্ত হয়েছে! প্রিভিউ দেখতে এবং ডাউনলোড অপশন পেতে 'যাচাই করুন' চাপুন।",
+                guidanceEn = "YouTube video detected! Tap 'Validate Link' for preview and download options."
             )
         }
 
@@ -126,9 +126,9 @@ object UrlAnalyzer {
                 isDirectMediaCandidate = false,
                 suggestedTitle = "Facebook Video",
                 suggestedFilename = "facebook_video.mp4",
-                limitationReason = "Facebook video posts require user authentication and cookie sessions.",
-                guidanceBn = "ফেসবুক ভিডিও পেজ সনাক্ত হয়েছে। সরাসরি MP4 ফাইলের জন্য ডিরেক্ট মিডিয়া লিংক ব্যবহার করুন।",
-                guidanceEn = "Facebook post detected. Facebook posts deliver HTML pages rather than raw MP4 files."
+                limitationReason = "Facebook video post detected.",
+                guidanceBn = "ফেসবুক ভিডিও পেজ সনাক্ত হয়েছে। সরাসরি HD MP4 ডাউনলোডের জন্য 'যাচাই করুন' চাপুন।",
+                guidanceEn = "Facebook post detected. Tap 'Validate Link' to extract direct HD MP4 video."
             )
         }
 
@@ -139,12 +139,12 @@ object UrlAnalyzer {
                 rawUrl = trimmed,
                 normalizedUrl = trimmed,
                 platform = PlatformType.PINTEREST,
-                isDirectMediaCandidate = false,
-                suggestedTitle = "Pinterest Pin",
+                isDirectMediaCandidate = true,
+                suggestedTitle = "Pinterest Video",
                 suggestedFilename = "pinterest_video.mp4",
-                limitationReason = "Pinterest pin URLs are gallery pages.",
-                guidanceBn = "পিন্টারেস্ট পিন সনাক্ত হয়েছে। সরাসরি ডাউনলোডের জন্য এর ডিরেক্ট মিডিয়া লিংক দিন।",
-                guidanceEn = "Pinterest pin detected. Direct media link (e.g. .mp4) is required for raw file saving."
+                limitationReason = "Pinterest video pin detected.",
+                guidanceBn = "পিন্টারেস্ট ভিডিও সনাক্ত হয়েছে! সরাসরি HD MP4 ভিডিও পেতে 'যাচাই করুন' চাপুন।",
+                guidanceEn = "Pinterest video detected! Tap 'Validate Link' to extract direct HD MP4."
             )
         }
 

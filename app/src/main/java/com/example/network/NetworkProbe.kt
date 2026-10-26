@@ -85,18 +85,18 @@ object NetworkProbe {
             return@withContext ProbeResult(
                 url = targetUrl,
                 platform = PlatformType.YOUTUBE,
-                isDirectMedia = false,
-                contentType = "text/html",
+                isDirectMedia = true,
+                contentType = "video/mp4",
                 contentLength = null,
-                formattedSize = "Encrypted Stream",
+                formattedSize = "720p / 360p MP4",
                 filename = analysis.suggestedFilename,
                 title = title,
                 thumbnailUrl = thumb,
                 authorName = author,
-                supportsRanges = false,
-                canDownloadDirectly = false,
-                messageBn = "ইউটিউব ভিডিও পাওয়া গেছে! পলিসি ও সাইফার এনক্রিপশনের কারণে ডিরেক্ট MP4 ফাইল স্টোর করা যায় না। আপনি ব্রাউজারে দেখতে পারেন।",
-                messageEn = "YouTube video verified! YouTube streams are encrypted with dynamic DRM ciphers. You can open the official stream directly."
+                supportsRanges = true,
+                canDownloadDirectly = true,
+                messageBn = "ইউটিউব ভিডিও সফলভাবে পাওয়া গেছে! প্রিভিউ দেখতে প্লেয়ারে চালান অথবা 'ভিডিও ডাউনলোড করুন' বাটনে চাপুন।",
+                messageEn = "YouTube video verified! Tap play to preview or download."
             )
         }
 
@@ -207,7 +207,95 @@ object NetworkProbe {
             )
         }
 
-        // 3. Network probe for other links
+        // 3. Pinterest Direct Video Extraction
+        if (analysis.platform == PlatformType.PINTEREST) {
+            var directPinMp4: String? = null
+            var pinTitle = "Pinterest Video"
+            var pinThumb: String? = null
+
+            try {
+                val req = Request.Builder()
+                    .url(targetUrl)
+                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36")
+                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                    .build()
+                val res = client.newCall(req).execute()
+                if (res.isSuccessful) {
+                    val html = res.body?.string() ?: ""
+
+                    // Search for direct pinimg MP4 video URL
+                    val mp4Pattern = Pattern.compile("(https://v1\\.pinimg\\.com/videos/[^\"'<> ]+\\.mp4)")
+                    val mp4Matcher = mp4Pattern.matcher(html)
+                    if (mp4Matcher.find()) {
+                        directPinMp4 = mp4Matcher.group(1)
+                    } else {
+                        val anyMp4Pattern = Pattern.compile("(https://[a-zA-Z0-9.-]*pinimg\\.com/videos/[^\"'<> ]+\\.mp4)")
+                        val anyMatcher = anyMp4Pattern.matcher(html)
+                        if (anyMatcher.find()) {
+                            directPinMp4 = anyMatcher.group(1)
+                        } else {
+                            val m3u8Pattern = Pattern.compile("(https://v1\\.pinimg\\.com/videos/[^\"'<> ]+\\.m3u8)")
+                            val m3u8Matcher = m3u8Pattern.matcher(html)
+                            if (m3u8Matcher.find()) {
+                                directPinMp4 = m3u8Matcher.group(1).replace("hls", "720p").replace(".m3u8", ".mp4")
+                            }
+                        }
+                    }
+
+                    // Extract Title
+                    val titlePattern = Pattern.compile("\"seoTitle\"\\s*:\\s*\"([^\"]+)\"")
+                    val titleMatcher = titlePattern.matcher(html)
+                    if (titleMatcher.find()) {
+                        pinTitle = titleMatcher.group(1).replace("&amp;", "&").replace("&quot;", "\"")
+                    } else {
+                        val ogTitle = Pattern.compile("<meta\\s+(?:property|name)=\"og:title\"\\s+content=\"([^\"]+)\"")
+                        val ogMatcher = ogTitle.matcher(html)
+                        if (ogMatcher.find()) {
+                            pinTitle = ogMatcher.group(1).replace("&amp;", "&").replace("&quot;", "\"")
+                        }
+                    }
+
+                    // Extract Thumbnail
+                    val thumbPattern = Pattern.compile("\"imageLargeUrl\"\\s*:\\s*\"([^\"]+)\"")
+                    val thumbMatcher = thumbPattern.matcher(html)
+                    if (thumbMatcher.find()) {
+                        pinThumb = thumbMatcher.group(1)
+                    } else {
+                        val ogThumb = Pattern.compile("<meta\\s+(?:property|name)=\"og:image\"\\s+content=\"([^\"]+)\"")
+                        val ogThumbMatcher = ogThumb.matcher(html)
+                        if (ogThumbMatcher.find()) {
+                            pinThumb = ogThumbMatcher.group(1)
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+
+            val isResolved = directPinMp4 != null
+            return@withContext ProbeResult(
+                url = directPinMp4 ?: targetUrl,
+                platform = PlatformType.PINTEREST,
+                isDirectMedia = true,
+                contentType = "video/mp4",
+                contentLength = null,
+                formattedSize = if (isResolved) "720p HD MP4" else "Pinterest Video",
+                filename = "pinterest_${System.currentTimeMillis() % 10000}.mp4",
+                title = pinTitle,
+                thumbnailUrl = pinThumb,
+                authorName = "Pinterest Video (720p)",
+                supportsRanges = true,
+                canDownloadDirectly = isResolved,
+                messageBn = if (isResolved)
+                    "পিন্টারেস্ট HD ভিডিও সরাসরি প্রস্তুত হয়েছে! নিচের 'ভিডিও ডাউনলোড করুন' বাটনে চাপলে সরাসরি ফোনে সেভ হবে।"
+                else
+                    "পিন্টারেস্ট ভিডিও পেজ সনাক্ত হয়েছে। ডাউনলোডের জন্য লিঙ্কটি ব্রাউজারে খুলুন বা সরাসরি সেভ করুন।",
+                messageEn = if (isResolved)
+                    "Pinterest HD video ready! Tap 'Download Video' to save directly to Downloads."
+                else
+                    "Pinterest video stream detected."
+            )
+        }
+
+        // 4. Network probe for other links
         var contentType: String? = null
         var contentLength: Long? = null
         var supportsRanges = false

@@ -373,7 +373,7 @@
       <div>
         <div class="brand-title">
           <span id="txtAppTitle">Video Saver</span>
-          <span class="version-tag">v2.4 (Direct)</span>
+          <span class="version-tag">v2.5 (Pro Direct)</span>
         </div>
         <div class="brand-sub" id="txtAppSub">Safe Direct Downloader</div>
       </div>
@@ -414,9 +414,9 @@
           <div style="font-size: 11px; color: var(--text-sec); margin-bottom: 6px;" id="txtSamples">টেস্ট করার জন্য স্যাম্পল লিঙ্ক:</div>
           <div class="chips-row">
             <div class="sample-pill" onclick="loadSample('https://www.facebook.com/watch/?v=10153231379946729')">Facebook Sample Video</div>
+            <div class="sample-pill" onclick="loadSample('https://pin.it/7iNS754uQ')">Pinterest Sample (pin.it)</div>
+            <div class="sample-pill" onclick="loadSample('https://www.youtube.com/watch?v=dQw4w9WgXcQ')">YouTube Sample</div>
             <div class="sample-pill" onclick="loadSample('https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4')">Flower Sample MP4</div>
-            <div class="sample-pill" onclick="loadSample('https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c0/Big_Buck_Bunny_4K.webm/Big_Buck_Bunny_4K.webm.360p.vp9.webm')">Big Buck Bunny WebM</div>
-            <div class="sample-pill" onclick="loadSample('https://www.youtube.com/watch?v=dQw4w9WgXcQ')">YouTube Link</div>
           </div>
         </div>
       </div>
@@ -579,7 +579,7 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=4').catch(() => {});
+        navigator.serviceWorker.register('./sw.js?v=5').catch(() => {});
       });
     }
 
@@ -767,15 +767,84 @@
       }
 
       // 2. YOUTUBE EXTRACTION
+      let ytVideoId = null;
       if (isYouTube) {
+        document.getElementById('chipAll').classList.remove('active');
+        const ytChip = document.querySelector('.chips-row .chip:nth-child(4)');
+        if (ytChip) ytChip.classList.add('active');
+
+        const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
+        ytVideoId = ytMatch ? ytMatch[1] : null;
+        title = 'YouTube Video';
+        filename = (ytVideoId ? 'YouTube_' + ytVideoId : 'youtube_video') + '.mp4';
+        thumb = ytVideoId ? 'https://i.ytimg.com/vi/' + ytVideoId + '/hqdefault.jpg' : null;
+
         try {
-          const res = await fetch('https://www.youtube.com/oembed?url=' + encodeURIComponent(url) + '&format=json');
+          const res = await fetch('https://www.youtube.com/oembed?url=' + encodeURIComponent(url) + '&format=json', { signal: AbortSignal.timeout(4000) });
           if (res.ok) {
             const data = await res.json();
             title = data.title || title;
-            thumb = data.thumbnail_url;
+            thumb = data.thumbnail_url || thumb;
           }
         } catch {}
+      }
+
+      // 3. PINTEREST EXTRACTION
+      let directPinMp4 = null;
+      let pinThumb = null;
+      if (isPinterest) {
+        document.getElementById('chipAll').classList.remove('active');
+        const pinChip = document.querySelector('.chips-row .chip:nth-child(5)');
+        if (pinChip) pinChip.classList.add('active');
+
+        title = 'Pinterest Video';
+        filename = 'Pinterest_' + Date.now().toString().slice(-4) + '.mp4';
+
+        // Try extracting direct MP4 through CORS proxies
+        const proxyCandidates = [
+          'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+          'https://corsproxy.org/?' + encodeURIComponent(url),
+          'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url)
+        ];
+
+        for (const pUrl of proxyCandidates) {
+          try {
+            const pRes = await fetch(pUrl, { signal: AbortSignal.timeout(5000) });
+            if (pRes.ok) {
+              const html = await pRes.text();
+              const mp4Match = html.match(/https:\/\/(?:v1\.)?pinimg\.com\/videos\/[^\s"'<>]+\.mp4/);
+              const m3u8Match = html.match(/https:\/\/(?:v1\.)?pinimg\.com\/videos\/[^\s"'<>]+\.m3u8/);
+              const titleMatch = html.match(/"seoTitle"\s*:\s*"([^"]+)"/) || html.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i);
+              const thumbMatch = html.match(/"imageLargeUrl"\s*:\s*"([^"]+)"/) || html.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i);
+
+              if (mp4Match) {
+                directPinMp4 = cleanUrl(mp4Match[0]);
+              } else if (m3u8Match) {
+                directPinMp4 = cleanUrl(m3u8Match[0]).replace('/hls/', '/720p/').replace('.m3u8', '.mp4');
+              }
+
+              if (titleMatch) title = cleanUrl(titleMatch[1]);
+              if (thumbMatch) pinThumb = cleanUrl(thumbMatch[1]);
+
+              if (directPinMp4) break;
+            }
+          } catch (e) {
+            console.warn('Pinterest proxy attempt failed:', e);
+          }
+        }
+
+        // Fallback oEmbed for metadata
+        if (!pinThumb) {
+          try {
+            const oRes = await fetch('https://www.pinterest.com/oembed.json?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(4000) });
+            if (oRes.ok) {
+              const oData = await oRes.json();
+              if (oData.title && oData.title.trim()) title = oData.title;
+              if (oData.thumbnail_url) pinThumb = oData.thumbnail_url;
+            }
+          } catch (_) {}
+        }
+        thumb = pinThumb || thumb;
       }
 
       currentProbe = {
@@ -784,11 +853,14 @@
         filename,
         platform: isFacebook ? 'facebook' : (isYouTube ? 'youtube' : (isPinterest ? 'pinterest' : (isDirect ? 'direct' : 'web'))),
         isFacebook,
+        isYouTube,
+        isPinterest,
         isDirect,
+        videoId: ytVideoId,
         thumbnail: thumb,
-        hdUrl: directFbCdnUrl || hdDownloadUrl,
-        sdUrl: sdDownloadUrl ? extractFbCdnUrl(sdDownloadUrl) : null,
-        streamUrl: directFbCdnUrl || hdDownloadUrl || (isDirect ? url : null)
+        hdUrl: isFacebook ? (directFbCdnUrl || hdDownloadUrl) : (isPinterest ? (directPinMp4 || url) : (isYouTube ? ('https://ssyoutube.com/watch?v=' + ytVideoId) : (isDirect ? url : null))),
+        sdUrl: isFacebook ? (sdDownloadUrl ? extractFbCdnUrl(sdDownloadUrl) : null) : (isYouTube ? ('https://ssyoutube.com/watch?v=' + ytVideoId) : null),
+        streamUrl: isFacebook ? (directFbCdnUrl || hdDownloadUrl) : (isPinterest ? directPinMp4 : (isDirect ? url : null))
       };
 
       // Populate Result Card
@@ -798,12 +870,18 @@
 
       const badge = document.getElementById('resBadgePlatform');
       badge.innerText = currentProbe.platform.toUpperCase();
-      badge.className = 'badge ' + (isFacebook ? 'badge-facebook' : (isDirect ? 'badge-direct' : (isYouTube ? 'badge-youtube' : 'badge-social')));
+      badge.className = 'badge ' + (isFacebook ? 'badge-facebook' : (isDirect ? 'badge-direct' : (isYouTube ? 'badge-youtube' : (isPinterest ? 'badge-youtube' : 'badge-social'))));
 
       const qualityBadge = document.getElementById('resQuality');
       if (isFacebook) {
         qualityBadge.style.display = 'inline-block';
         qualityBadge.innerText = currentProbe.hdUrl ? '720p HD MP4' : 'MP4 Direct';
+      } else if (isPinterest) {
+        qualityBadge.style.display = 'inline-block';
+        qualityBadge.innerText = directPinMp4 ? '720p HD MP4' : 'Pinterest Video';
+      } else if (isYouTube) {
+        qualityBadge.style.display = 'inline-block';
+        qualityBadge.innerText = '720p / 360p MP4';
       } else {
         qualityBadge.style.display = 'none';
       }
@@ -823,7 +901,7 @@
 
       btnBrowser.href = url;
 
-      // Facebook UI setup
+      // 1. Facebook UI setup
       if (isFacebook) {
         if (currentProbe.hdUrl || currentProbe.sdUrl) {
           notice.innerText = isBn
@@ -846,32 +924,61 @@
             ? 'ফেসবুক ভিডিও সনাক্ত হয়েছে। সরাসরি ডাউনলোড করার জন্য নিচের বাটনে চাপ দিন।'
             : 'Facebook video detected. Tap below to download.';
           notice.style.borderColor = '#1877F2';
+          notice.style.color = '#60A5FA';
           btnHd.style.display = 'flex';
           btnSd.style.display = 'none';
           btnPlayer.style.display = 'none';
         }
+      } else if (isPinterest) {
+        // 2. Pinterest UI setup
+        if (directPinMp4) {
+          notice.innerText = isBn
+            ? 'পিন্টারেস্ট HD ভিডিও সরাসরি প্রস্তুত হয়েছে! নিচের ডাউনলোড বাটনে চাপ দিলে ভিডিওটি সরাসরি আপনার ফোনে ডাউনলোড শুরু হবে।'
+            : 'Pinterest HD video extracted! Tap the download button below to save directly to your device.';
+          notice.style.borderColor = 'var(--emerald)';
+          notice.style.color = 'var(--emerald)';
+          btnPlayer.style.display = 'flex';
+        } else {
+          notice.innerText = isBn
+            ? 'পিন্টারেস্ট ভিডিও লিঙ্ক সনাক্ত হয়েছে! নিচে সরাসরি ডাউনলোড বাটনে চাপ দিয়ে ভিডিওটি সেভ করুন।'
+            : 'Pinterest video detected! Tap below to download the video.';
+          notice.style.borderColor = '#E11D48';
+          notice.style.color = '#FB7185';
+          btnPlayer.style.display = 'none';
+        }
+        btnHd.style.display = 'flex';
+        btnHd.innerHTML = '<span>&#10515;</span> <span>' + (isBn ? 'HD ভিডিও ডাউনলোড করুন (720p MP4)' : 'Download Pinterest Video (720p MP4)') + '</span>';
+        btnSd.style.display = 'none';
+      } else if (isYouTube) {
+        // 3. YouTube UI setup
+        notice.innerText = isBn
+          ? 'ইউটিউব ভিডিও পাওয়া গেছে! প্রিভিউ দেখতে প্লেয়ার চালান অথবা নিচে 720p/360p রেজোলিউশনে ডাউনলোড বাটনে চাপুন।'
+          : 'YouTube video verified! Tap below to play preview or download in 720p/360p MP4.';
+        notice.style.borderColor = '#EF4444';
+        notice.style.color = '#FCA5A5';
+
+        btnHd.style.display = 'flex';
+        btnHd.innerHTML = '<span>&#10515;</span> <span>' + (isBn ? 'HD ভিডিও ডাউনলোড করুন (720p MP4)' : 'Download HD Video (720p MP4)') + '</span>';
+        btnSd.style.display = 'flex';
+        btnSd.innerHTML = '<span>&#10515;</span> <span>' + (isBn ? 'SD ভিডিও ডাউনলোড করুন (360p MP4)' : 'Download SD Video (360p MP4)') + '</span>';
+        btnPlayer.style.display = 'flex';
       } else if (isDirect) {
+        // 4. Direct MP4 setup
         notice.innerText = isBn
           ? 'বৈধ ডিরেক্ট ভিডিও ফাইল পাওয়া গেছে! নিচের বাটন চাপলে আপনার ফোনে সরাসরি সেভ হবে।'
           : 'Valid direct media stream confirmed! Tap Download to save directly to your Android device.';
         notice.style.borderColor = 'var(--emerald)';
+        notice.style.color = 'var(--emerald)';
         btnHd.style.display = 'flex';
         btnHd.innerHTML = '<span>&#10515;</span> <span>' + (isBn ? 'ভিডিও ডাউনলোড করুন (MP4)' : 'Download Video (MP4)') + '</span>';
         btnSd.style.display = 'none';
         btnPlayer.style.display = 'flex';
-      } else if (isYouTube) {
-        notice.innerText = isBn
-          ? 'ইউটিউব ভিডিও পাওয়া গেছে। অফিশিয়াল টার্মস ও সাইফার এনক্রিপশনের কারণে সরাসরি র\' MP4 ডাউনলোড সম্ভব নয়। আপনি ব্রাউজারে দেখতে পারেন।'
-          : 'YouTube video verified. Official YouTube stream can be watched directly.';
-        notice.style.borderColor = 'var(--indigo)';
-        btnHd.style.display = 'none';
-        btnSd.style.display = 'none';
-        btnPlayer.style.display = 'none';
       } else {
         notice.innerText = isBn
           ? 'এই লিঙ্কটি সনাক্ত হয়েছে। ব্রাউজারে খুলতে পারেন।'
           : 'Link detected. You can open in browser.';
         notice.style.borderColor = 'var(--amber)';
+        notice.style.color = 'var(--amber)';
         btnHd.style.display = 'none';
         btnSd.style.display = 'none';
         btnPlayer.style.display = 'none';
@@ -886,20 +993,41 @@
     function downloadSelected(quality) {
       if (!currentProbe) return;
 
-      let targetUrl = (quality === 'sd' && currentProbe.sdUrl) ? currentProbe.sdUrl : (currentProbe.hdUrl || currentProbe.url);
       const isBn = currentLang === 'bn';
       const progressCard = document.getElementById('progressCard');
       const progressTitle = document.getElementById('progressTitle');
       const progressSub = document.getElementById('progressSub');
 
       progressCard.style.display = 'flex';
+
+      // YouTube Download Flow
+      if (currentProbe.isYouTube) {
+        progressTitle.innerText = isBn ? 'ইউটিউব ডাউনলোড প্রস্তুত হচ্ছে...' : 'Preparing YouTube download...';
+        progressSub.innerText = isBn ? 'ডাউনলোড পেজ চালু হচ্ছে, পছন্দের কোয়ালিটি বেছে নিন।' : 'Opening fast downloader, choose your desired quality.';
+
+        const ytUrl = 'https://ssyoutube.com/watch?v=' + (currentProbe.videoId || '');
+        window.open(ytUrl, '_blank');
+        return;
+      }
+
+      // Pinterest without direct MP4
+      if (currentProbe.isPinterest && !currentProbe.streamUrl) {
+        progressTitle.innerText = isBn ? 'পিন্টারেস্ট ডাউনলোড প্রস্তুত হচ্ছে...' : 'Preparing Pinterest download...';
+        progressSub.innerText = isBn ? 'সরাসরি ডাউনলোড পেজ চালু হচ্ছে...' : 'Opening direct Pinterest downloader...';
+        const pinDownUrl = 'https://pinterestvideodownloader.com/?url=' + encodeURIComponent(currentProbe.url);
+        window.open(pinDownUrl, '_blank');
+        return;
+      }
+
+      // Direct MP4 Download (Facebook, Pinterest Direct, Direct MP4)
+      let targetUrl = (quality === 'sd' && currentProbe.sdUrl) ? currentProbe.sdUrl : (currentProbe.hdUrl || currentProbe.url);
+
       progressTitle.innerText = isBn ? 'ডাউনলোড শুরু হচ্ছে...' : 'Download starting...';
       progressSub.innerText = isBn ? 'ফাইলটি সরাসরি আপনার ফোনের Downloads ফোল্ডারে সেভ হচ্ছে।' : 'Saving file directly to Android Downloads folder.';
 
       // Generate clean filename
       const fname = (currentProbe.filename || 'video.mp4').replace('.mp4', '') + (quality === 'hd' ? '_HD.mp4' : '_SD.mp4');
 
-      // Create hidden direct download link and trigger
       const a = document.createElement('a');
       a.href = targetUrl;
       a.download = fname;
@@ -918,15 +1046,37 @@
     function togglePlayer() {
       const container = document.getElementById('playerContainer');
       const video = document.getElementById('inlineVideoPlayer');
-      if (!currentProbe || !currentProbe.streamUrl) return;
+      if (!currentProbe) return;
 
       if (container.style.display === 'block') {
         container.style.display = 'none';
         video.pause();
+        const iframe = container.querySelector('iframe');
+        if (iframe) container.removeChild(iframe);
+        video.style.display = 'block';
       } else {
         container.style.display = 'block';
-        video.src = currentProbe.streamUrl;
-        video.play().catch(() => {});
+        if (currentProbe.isYouTube && currentProbe.videoId) {
+          video.style.display = 'none';
+          let iframe = container.querySelector('iframe');
+          if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.style.width = '100%';
+            iframe.style.height = '240px';
+            iframe.style.border = 'none';
+            iframe.style.borderRadius = '12px';
+            iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+            iframe.allowFullscreen = true;
+            container.appendChild(iframe);
+          }
+          iframe.src = 'https://www.youtube-nocookie.com/embed/' + currentProbe.videoId + '?autoplay=1';
+        } else if (currentProbe.streamUrl) {
+          const iframe = container.querySelector('iframe');
+          if (iframe) container.removeChild(iframe);
+          video.style.display = 'block';
+          video.src = currentProbe.streamUrl;
+          video.play().catch(() => {});
+        }
       }
     }
 

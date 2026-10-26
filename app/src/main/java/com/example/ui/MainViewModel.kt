@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.db.AppDatabase
@@ -172,6 +174,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         downloadJob?.cancel()
+
+        if (probe.platform == PlatformType.YOUTUBE && !probe.url.endsWith(".mp4")) {
+            val videoId = UrlAnalyzer.analyze(probe.url).videoId
+            val downloadUrl = if (!videoId.isNullOrEmpty()) "https://ssyoutube.com/watch?v=$videoId" else probe.url
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                getApplication<Application>().startActivity(intent)
+                val msg = if (_settings.value.language == "bn") "ইউটিউব ডাউনলোডার পেজ খোলা হয়েছে।" else "YouTube downloader opened."
+                _toastMessage.value = Pair(msg, false)
+            } catch (_: Exception) {}
+            return
+        }
 
         val filename = if (_settings.value.filenamePrefix.isNotBlank() && !probe.filename.startsWith(_settings.value.filenamePrefix)) {
             "${_settings.value.filenamePrefix}${probe.filename}"
