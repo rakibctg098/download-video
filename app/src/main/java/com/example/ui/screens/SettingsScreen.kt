@@ -16,6 +16,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 import com.example.data.model.AppSettings
 import com.example.ui.theme.*
 
@@ -26,6 +29,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val isBn = settings.language == "bn"
+    val context = LocalContext.current
 
     LazyColumn(
         modifier = modifier
@@ -297,6 +301,80 @@ fun SettingsScreen(
                         fontSize = 11.sp,
                         color = TextSecondary
                     )
+                }
+            }
+        }
+
+        // Developer Info Card (Made by Mohammad Rakib)
+        item {
+            Surface(
+                color = DarkSurface,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, BrandCyan.copy(alpha = 0.45f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = BrandCyan,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = if (isBn) "ডেভেলপার পরিচিতি" else "Developer Info",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                    }
+
+                    Text(
+                        text = "Made by Mohammad Rakib",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = BrandCyan
+                    )
+
+                    Text(
+                        text = "Telegram channel :https://t.me/appdevbyrakib",
+                        fontSize = 12.sp,
+                        color = TextSecondary
+                    )
+
+                    Button(
+                        onClick = {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/appdevbyrakib")).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                context.startActivity(intent)
+                            } catch (_: Exception) {}
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandCyan),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Send,
+                            contentDescription = null,
+                            tint = DarkBackground,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isBn) "টেলিগ্রাম চ্যানেলে যুক্ত হোন" else "Join Telegram Channel",
+                            color = DarkBackground,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
             }
         }

@@ -373,7 +373,7 @@
       <div>
         <div class="brand-title">
           <span id="txtAppTitle">Video Saver</span>
-          <span class="version-tag">v2.6 (Pro Direct)</span>
+          <span class="version-tag">v2.7 (Direct Pro)</span>
         </div>
         <div class="brand-sub" id="txtAppSub">Safe Direct Downloader</div>
       </div>
@@ -544,6 +544,42 @@
         <div id="testItems" style="display: flex; flex-direction: column; gap: 8px;"></div>
       </div>
     </div>
+
+    <!-- TAB 5: SETTINGS (সেটিংস) -->
+    <div id="tab-settings" class="tab-content">
+      <!-- Developer Info Card -->
+      <div class="card" style="border-color: rgba(6, 182, 212, 0.45); background: linear-gradient(180deg, rgba(6, 182, 212, 0.08), var(--card-bg));">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 20px;">👤</span>
+          <h3 style="margin: 0; font-size: 15px;" id="txtDevTitle">ডেভেলপার পরিচিতি</h3>
+        </div>
+        <div style="font-size: 16px; font-weight: 700; color: var(--cyan); margin-top: 6px;">
+          Made by Mohammad Rakib
+        </div>
+        <div style="font-size: 13px; color: var(--text-sec); word-break: break-all;">
+          Telegram channel : https://t.me/appdevbyrakib
+        </div>
+        <a href="https://t.me/appdevbyrakib" target="_blank" rel="noopener noreferrer" class="btn-main" style="text-decoration: none; justify-content: center; margin-top: 10px; background: linear-gradient(135deg, var(--cyan), var(--blue));">
+          <span>✈</span>
+          <span id="txtBtnJoinTg">টেলিগ্রাম চ্যানেলে যুক্ত হোন</span>
+        </a>
+      </div>
+
+      <div class="card">
+        <h3 style="margin: 0; font-size: 15px;" id="txtSetLangTitle">ভাষা নির্বাচন (Language)</h3>
+        <div style="display: flex; gap: 8px; margin-top: 6px;">
+          <button class="sample-pill active" onclick="setLanguageDirect('bn')" id="btnLangBn">বাংলা (Bengali)</button>
+          <button class="sample-pill" onclick="setLanguageDirect('en')" id="btnLangEn">English</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin: 0; font-size: 15px;" id="txtSetOptTitle">মেমোরি ও পারফরম্যান্স</h3>
+        <p style="font-size: 12px; color: var(--text-sec); line-height: 1.5; margin: 4px 0 0 0;" id="txtSetOptDesc">
+          ব্রাউজার ক্র্যাশ রোধ করতে ডিরেক্ট ইন-অ্যাপ স্ট্রিমিং এবং নো-অ্যাড লো-মেমোরি ডাউনলোড পাইপলাইন সক্রিয় রয়েছে।
+        </p>
+      </div>
+    </div>
   </main>
 
   <!-- Bottom Navigation -->
@@ -564,6 +600,10 @@
       <span style="font-size: 16px;">&#9874;</span>
       <span id="navTxtTests">টেস্ট</span>
     </div>
+    <div class="nav-item" onclick="switchTab('settings', this)" id="navSettings">
+      <span style="font-size: 16px;">⚙</span>
+      <span id="navTxtSettings">সেটিংস</span>
+    </div>
   </nav>
 
   <script>
@@ -579,7 +619,7 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=6').catch(() => {});
+        navigator.serviceWorker.register('./sw.js?v=8').catch(() => {});
       });
     }
 
@@ -621,7 +661,21 @@
       document.getElementById('navTxtHist').innerText = isBn ? 'হিস্ট্রি' : 'History';
       document.getElementById('navTxtGuide').innerText = isBn ? 'গাইড' : 'Guide';
       document.getElementById('navTxtTests').innerText = isBn ? 'টেস্ট' : 'Tests';
+      if (document.getElementById('navTxtSettings')) document.getElementById('navTxtSettings').innerText = isBn ? 'সেটিংস' : 'Settings';
+      if (document.getElementById('txtDevTitle')) document.getElementById('txtDevTitle').innerText = isBn ? 'ডেভেলপার পরিচিতি' : 'Developer Info';
+      if (document.getElementById('txtBtnJoinTg')) document.getElementById('txtBtnJoinTg').innerText = isBn ? 'টেলিগ্রাম চ্যানেলে যুক্ত হোন' : 'Join Telegram Channel';
+      if (document.getElementById('txtSetLangTitle')) document.getElementById('txtSetLangTitle').innerText = isBn ? 'ভাষা নির্বাচন (Language)' : 'App Language';
+      if (document.getElementById('txtSetOptTitle')) document.getElementById('txtSetOptTitle').innerText = isBn ? 'মেমোরি ও পারফরম্যান্স' : 'Memory & Performance';
+      if (document.getElementById('txtSetOptDesc')) document.getElementById('txtSetOptDesc').innerText = isBn ? 'ব্রাউজার ক্র্যাশ রোধ করতে ডিরেক্ট ইন-অ্যাপ স্ট্রিমিং এবং নো-অ্যাড লো-মেমোরি ডাউনলোড পাইপলাইন সক্রিয় রয়েছে।' : 'Direct in-app streaming and ad-free low-memory download pipeline active to prevent mobile crashes.';
       renderHistory();
+    }
+
+    function setLanguageDirect(l) {
+      currentLang = l;
+      document.getElementById('btnToggleLang').innerText = currentLang === 'bn' ? 'English' : 'বাংলা';
+      document.getElementById('btnLangBn')?.classList.toggle('active', l === 'bn');
+      document.getElementById('btnLangEn')?.classList.toggle('active', l === 'en');
+      applyLanguage();
     }
 
     function setPlatform(p, el) {
@@ -805,35 +859,58 @@
         const idMatch = url.match(/\/pin\/(\d+)/);
         if (idMatch) pinId = idMatch[1];
 
+        // If shortlink (pin.it/...), unshorten to get canonical pin ID
+        if (!pinId && url.includes('pin.it/')) {
+          try {
+            const uRes = await fetch('https://unshorten.me/json/' + encodeURIComponent(url), { signal: AbortSignal.timeout(4000) });
+            if (uRes.ok) {
+              const uData = await uRes.json();
+              if (uData.resolved_url) {
+                const mPin = uData.resolved_url.match(/\/pin\/(\d+)/);
+                if (mPin) pinId = mPin[1];
+              }
+            }
+          } catch (_) {}
+        }
+
         // 2. Query official Pinterest widget API
         const tryWidgetApi = async (pid) => {
           const endpoints = [
             'https://widgets.pinterest.com/v3/pidgets/pins/info/?pin_ids=' + pid,
-            'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://widgets.pinterest.com/v3/pidgets/pins/info/?pin_ids=' + pid),
-            'https://corsproxy.org/?' + encodeURIComponent('https://widgets.pinterest.com/v3/pidgets/pins/info/?pin_ids=' + pid)
+            'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://widgets.pinterest.com/v3/pidgets/pins/info/?pin_ids=' + pid)
           ];
           for (const ep of endpoints) {
             try {
-              const res = await fetch(ep, { signal: AbortSignal.timeout(4000) });
+              const res = await fetch(ep, { signal: AbortSignal.timeout(4500) });
               if (res.ok) {
                 const text = await res.text();
                 const json = JSON.parse(text);
                 const pin = (json.data && json.data.length > 0) ? json.data[0] : null;
                 if (pin) {
-                  if (pin.description) title = pin.description;
+                  if (pin.description && pin.description.trim()) title = pin.description;
                   if (pin.images && pin.images['564x']) pinThumb = pin.images['564x'].url;
                   else if (pin.images && pin.images['236x']) pinThumb = pin.images['236x'].url;
+
+                  // Direct regex over unescaped JSON text - matches story pins, idea pins, and standard pins
+                  const cleanText = text.replace(/\\\/|\//g, '/');
+                  const mp4InText = cleanText.match(/https:\/\/(?:[a-zA-Z0-9.-]+\.)?pinimg\.com\/videos\/[^\s"'<>\\]+\.mp4/);
+                  if (mp4InText) return cleanUrl(mp4InText[0]);
+
+                  const m3u8InText = cleanText.match(/https:\/\/(?:[a-zA-Z0-9.-]+\.)?pinimg\.com\/videos\/[^\s"'<>\\]+\.m3u8/);
+                  if (m3u8InText) {
+                    const raw = m3u8InText[0];
+                    if (raw.includes('/iht/hls/')) {
+                      return cleanUrl(raw.replace('/hls/', '/expMp4/').replace('.m3u8', '_720w.mp4'));
+                    } else {
+                      return cleanUrl(raw.replace('/hls/', '/720p/').replace('.m3u8', '.mp4'));
+                    }
+                  }
 
                   if (pin.videos && pin.videos.video_list) {
                     const vl = pin.videos.video_list;
                     if (vl.V_720P && vl.V_720P.url) return vl.V_720P.url;
                     if (vl.V_EXP7 && vl.V_EXP7.url) return vl.V_EXP7.url;
                     if (vl.V_HLSV4 && vl.V_HLSV4.url) return vl.V_HLSV4.url.replace('/hls/', '/720p/').replace('.m3u8', '.mp4');
-                    for (const k in vl) {
-                      if (vl[k] && vl[k].url) {
-                        return vl[k].url.replace('/hls/', '/720p/').replace('.m3u8', '.mp4');
-                      }
-                    }
                   }
                 }
               }
@@ -850,8 +927,7 @@
         if (!directPinMp4) {
           const proxyCandidates = [
             'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
-            'https://corsproxy.org/?' + encodeURIComponent(url),
-            'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url)
+            'https://corsproxy.org/?' + encodeURIComponent(url)
           ];
 
           for (const pUrl of proxyCandidates) {
@@ -859,8 +935,9 @@
               const pRes = await fetch(pUrl, { signal: AbortSignal.timeout(5000) });
               if (pRes.ok) {
                 const html = await pRes.text();
+                const cleanHtml = html.replace(/\\\/|\//g, '/');
                 if (!pinId) {
-                  const mId = html.match(/\/pin\/(\d+)/);
+                  const mId = cleanHtml.match(/\/pin\/(\d+)/) || cleanHtml.match(/"root_pin_id"\s*:\s*"(\d+)"/);
                   if (mId) {
                     pinId = mId[1];
                     const fromWidget = await tryWidgetApi(pinId);
@@ -871,15 +948,16 @@
                   }
                 }
 
-                const mp4Match = html.match(/https:\/\/(?:[a-zA-Z0-9.-]+\.)?pinimg\.com\/videos\/[^\s"'<>]+\.mp4/);
-                const m3u8Match = html.match(/https:\/\/(?:[a-zA-Z0-9.-]+\.)?pinimg\.com\/videos\/[^\s"'<>]+\.m3u8/);
-                const titleMatch = html.match(/"seoTitle"\s*:\s*"([^"]+)"/) || html.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i);
-                const thumbMatch = html.match(/"imageLargeUrl"\s*:\s*"([^"]+)"/) || html.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i);
+                const mp4Match = cleanHtml.match(/https:\/\/(?:[a-zA-Z0-9.-]+\.)?pinimg\.com\/videos\/[^\s"'<>\\]+\.mp4/);
+                const m3u8Match = cleanHtml.match(/https:\/\/(?:[a-zA-Z0-9.-]+\.)?pinimg\.com\/videos\/[^\s"'<>\\]+\.m3u8/);
+                const titleMatch = cleanHtml.match(/"seoTitle"\s*:\s*"([^"]+)"/) || cleanHtml.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i);
+                const thumbMatch = cleanHtml.match(/"imageLargeUrl"\s*:\s*"([^"]+)"/) || cleanHtml.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i);
 
                 if (mp4Match) {
                   directPinMp4 = cleanUrl(mp4Match[0]);
                 } else if (m3u8Match) {
-                  directPinMp4 = cleanUrl(m3u8Match[0]).replace('/hls/', '/720p/').replace('.m3u8', '.mp4');
+                  const raw = cleanUrl(m3u8Match[0]);
+                  directPinMp4 = raw.includes('/iht/hls/') ? raw.replace('/hls/', '/expMp4/').replace('.m3u8', '_720w.mp4') : raw.replace('/hls/', '/720p/').replace('.m3u8', '.mp4');
                 }
 
                 if (titleMatch && title === 'Pinterest Video') title = cleanUrl(titleMatch[1]);
@@ -907,9 +985,6 @@
         thumb = pinThumb || thumb;
       }
 
-      const ytCobaltUrl = ytVideoId ? ('https://cobalt.tools/#' + encodeURIComponent('https://www.youtube.com/watch?v=' + ytVideoId)) : ('https://cobalt.tools/#' + encodeURIComponent(url));
-      const pinFallbackUrl = 'https://cobalt.tools/#' + encodeURIComponent(url);
-
       currentProbe = {
         url,
         title,
@@ -921,8 +996,8 @@
         isDirect,
         videoId: ytVideoId,
         thumbnail: thumb,
-        hdUrl: isFacebook ? (directFbCdnUrl || hdDownloadUrl) : (isPinterest ? (directPinMp4 || pinFallbackUrl) : (isYouTube ? ytCobaltUrl : (isDirect ? url : null))),
-        sdUrl: isFacebook ? (sdDownloadUrl ? extractFbCdnUrl(sdDownloadUrl) : null) : (isYouTube ? ytCobaltUrl : null),
+        hdUrl: isFacebook ? (directFbCdnUrl || hdDownloadUrl) : (isPinterest ? directPinMp4 : (isDirect ? url : null)),
+        sdUrl: isFacebook ? (sdDownloadUrl ? extractFbCdnUrl(sdDownloadUrl) : null) : null,
         streamUrl: isFacebook ? (directFbCdnUrl || hdDownloadUrl) : (isPinterest ? directPinMp4 : (isDirect ? url : null))
       };
 
@@ -1063,34 +1138,50 @@
 
       progressCard.style.display = 'flex';
 
-      // YouTube Download Flow
+      // YouTube Download Flow - Direct in-app preview + 1-tap download
       if (currentProbe.isYouTube) {
-        progressTitle.innerText = isBn ? 'ইউটিউব ডাউনলোড প্রস্তুত হচ্ছে...' : 'Preparing YouTube download...';
-        progressSub.innerText = isBn ? 'ক্লিন নো-অ্যাড ডাউনলোডার চালু হচ্ছে, ডাউনলোড অপশন বেছে নিন।' : 'Opening clean ad-free downloader, choose format to save.';
+        progressTitle.innerText = isBn ? 'ইউটিউব ভিডিও প্রস্তুত...' : 'YouTube Video Ready...';
+        progressSub.innerText = isBn ? 'ভিডিওটি ইন-অ্যাপ প্লেয়ারে দেখার জন্য চালু করা হলো এবং ডাউনলোডার প্রস্তুত হচ্ছে।' : 'Video started in inline player and direct converter ready.';
 
-        const ytTarget = 'https://www.youtube.com/watch?v=' + (currentProbe.videoId || '');
-        const ytCobalt = 'https://cobalt.tools/#' + encodeURIComponent(ytTarget);
-        window.open(ytCobalt, '_blank');
+        const container = document.getElementById('playerContainer');
+        if (container.style.display !== 'block') {
+          togglePlayer();
+        }
+
+        const vId = currentProbe.videoId;
+        if (vId) {
+          const dlUrl = 'https://en.y2mate.is/youtube-to-mp4.html?v=' + encodeURIComponent(vId);
+          window.open(dlUrl, '_blank');
+        }
         return;
       }
 
-      // Pinterest without direct MP4 stream fallback
-      if (currentProbe.isPinterest && !currentProbe.streamUrl) {
-        progressTitle.innerText = isBn ? 'পিন্টারেস্ট ডাউনলোড প্রস্তুত হচ্ছে...' : 'Preparing Pinterest download...';
-        progressSub.innerText = isBn ? 'ক্লিন ডাউনলোডার পেজ চালু হচ্ছে...' : 'Opening clean Pinterest downloader...';
-        const pinCobalt = 'https://cobalt.tools/#' + encodeURIComponent(currentProbe.url);
-        window.open(pinCobalt, '_blank');
-        return;
+      // Pinterest Download Flow - DIRECT MP4 DOWNLOAD ONLY (NO COBALT, NO SAVEFROM!)
+      if (currentProbe.isPinterest) {
+        const pinDirectUrl = currentProbe.streamUrl || currentProbe.hdUrl;
+        if (pinDirectUrl && pinDirectUrl.includes('.mp4')) {
+          triggerBrowserDownload(pinDirectUrl, currentProbe.filename || 'Pinterest_Video.mp4');
+          return;
+        } else {
+          progressTitle.innerText = isBn ? 'পিন্টারেস্ট ভিডিও প্রস্তুত করা হচ্ছে...' : 'Preparing Pinterest video...';
+          progressSub.innerText = isBn ? 'ভিডিও ফাইলটি সরাসরি সনাক্ত করা যায়নি। অনুগ্রহ করে লিংকটি পুনরায় চেক করুন।' : 'Direct MP4 stream could not be loaded. Please re-check the link.';
+          return;
+        }
       }
 
       // Direct MP4 Download (Facebook, Pinterest Direct, Direct MP4)
       let targetUrl = (quality === 'sd' && currentProbe.sdUrl) ? currentProbe.sdUrl : (currentProbe.hdUrl || currentProbe.url);
+      const fname = (currentProbe.filename || 'video.mp4').replace('.mp4', '') + (quality === 'hd' ? '_HD.mp4' : '_SD.mp4');
+      triggerBrowserDownload(targetUrl, fname);
+    }
+
+    function triggerBrowserDownload(targetUrl, fname) {
+      const isBn = currentLang === 'bn';
+      const progressTitle = document.getElementById('progressTitle');
+      const progressSub = document.getElementById('progressSub');
 
       progressTitle.innerText = isBn ? 'ডাউনলোড শুরু হচ্ছে...' : 'Download starting...';
       progressSub.innerText = isBn ? 'ফাইলটি সরাসরি আপনার ফোনের Downloads ফোল্ডারে সেভ হচ্ছে।' : 'Saving file directly to Android Downloads folder.';
-
-      // Generate clean filename
-      const fname = (currentProbe.filename || 'video.mp4').replace('.mp4', '') + (quality === 'hd' ? '_HD.mp4' : '_SD.mp4');
 
       const a = document.createElement('a');
       a.href = targetUrl;

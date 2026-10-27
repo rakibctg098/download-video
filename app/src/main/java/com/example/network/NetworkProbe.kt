@@ -278,6 +278,25 @@ object NetworkProbe {
                                         }
                                     }
                                 }
+
+                                // Handle Story Pin / Idea Pin videos inside widget body
+                                if (directPinMp4 == null) {
+                                    val cleanWBody = wBody.replace("\\/", "/")
+                                    val wMp4Matcher = Pattern.compile("https://[a-zA-Z0-9.-]*pinimg\\.com/videos/[^\"'<> ]+\\.mp4").matcher(cleanWBody)
+                                    if (wMp4Matcher.find()) {
+                                        directPinMp4 = cleanEscapedUrl(wMp4Matcher.group(0))
+                                    } else {
+                                        val wHlsMatcher = Pattern.compile("https://[a-zA-Z0-9.-]*pinimg\\.com/videos/[^\"'<> ]+\\.m3u8").matcher(cleanWBody)
+                                        if (wHlsMatcher.find()) {
+                                            val raw = wHlsMatcher.group(0)
+                                            directPinMp4 = if (raw.contains("/iht/hls/")) {
+                                                raw.replace("/hls/", "/expMp4/").replace(".m3u8", "_720w.mp4")
+                                            } else {
+                                                raw.replace("/hls/", "/720p/").replace(".m3u8", ".mp4")
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     } catch (_: Exception) {}
@@ -285,15 +304,21 @@ object NetworkProbe {
 
                 // 3. Fallback: Parse HTML for pinimg video URLs
                 if (directPinMp4 == null && html.isNotEmpty()) {
+                    val cleanHtml = html.replace("\\/", "/")
                     val anyMp4Pattern = Pattern.compile("https://[a-zA-Z0-9.-]*pinimg\\.com/videos/[^\"'<> ]+\\.mp4")
-                    val anyMatcher = anyMp4Pattern.matcher(html)
+                    val anyMatcher = anyMp4Pattern.matcher(cleanHtml)
                     if (anyMatcher.find()) {
                         directPinMp4 = cleanEscapedUrl(anyMatcher.group(0))
                     } else {
                         val m3u8Pattern = Pattern.compile("https://[a-zA-Z0-9.-]*pinimg\\.com/videos/[^\"'<> ]+\\.m3u8")
-                        val m3u8Matcher = m3u8Pattern.matcher(html)
+                        val m3u8Matcher = m3u8Pattern.matcher(cleanHtml)
                         if (m3u8Matcher.find()) {
-                            directPinMp4 = cleanEscapedUrl(m3u8Matcher.group(0)).replace("/hls/", "/720p/").replace(".m3u8", ".mp4")
+                            val rawM3u8 = m3u8Matcher.group(0)
+                            directPinMp4 = if (rawM3u8.contains("/iht/hls/")) {
+                                rawM3u8.replace("/hls/", "/expMp4/").replace(".m3u8", "_720w.mp4")
+                            } else {
+                                rawM3u8.replace("/hls/", "/720p/").replace(".m3u8", ".mp4")
+                            }
                         }
                     }
 
