@@ -179,13 +179,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (probe.platform == PlatformType.YOUTUBE && !probe.url.endsWith(".mp4")) {
             val videoId = UrlAnalyzer.analyze(probe.url).videoId
             val ytTarget = if (!videoId.isNullOrEmpty()) "https://www.youtube.com/watch?v=$videoId" else probe.url
-            val downloadUrl = if (!videoId.isNullOrEmpty()) "https://en.y2mate.is/youtube-to-mp4.html?v=$videoId" else "https://en.y2mate.is/"
+            val downloadUrl = "https://9xbuddy.in/process?url=" + java.net.URLEncoder.encode(ytTarget, "UTF-8")
             try {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 getApplication<Application>().startActivity(intent)
-                val msg = if (_settings.value.language == "bn") "ইউটিউব ডাউনলোডার পেজ খোলা হয়েছে।" else "YouTube downloader opened."
+                val msg = if (_settings.value.language == "bn") "ইউটিউব ডাউনলোড পেজ সফলভাবে খোলা হয়েছে।" else "YouTube download page opened."
                 _toastMessage.value = Pair(msg, false)
             } catch (_: Exception) {}
             return

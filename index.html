@@ -373,7 +373,7 @@
       <div>
         <div class="brand-title">
           <span id="txtAppTitle">Video Saver</span>
-          <span class="version-tag">v2.7 (Direct Pro)</span>
+          <span class="version-tag">v2.8 (YouTube Pro Fixed)</span>
         </div>
         <div class="brand-sub" id="txtAppSub">Safe Direct Downloader</div>
       </div>
@@ -619,7 +619,7 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=8').catch(() => {});
+        navigator.serviceWorker.register('./sw.js?v=9').catch(() => {});
       });
     }
 
@@ -1138,10 +1138,10 @@
 
       progressCard.style.display = 'flex';
 
-      // YouTube Download Flow - Direct in-app preview + 1-tap download
+      // YouTube Download Flow - Direct in-app preview + 100% Unblocked High Speed Downloader
       if (currentProbe.isYouTube) {
-        progressTitle.innerText = isBn ? 'ইউটিউব ভিডিও প্রস্তুত...' : 'YouTube Video Ready...';
-        progressSub.innerText = isBn ? 'ভিডিওটি ইন-অ্যাপ প্লেয়ারে দেখার জন্য চালু করা হলো এবং ডাউনলোডার প্রস্তুত হচ্ছে।' : 'Video started in inline player and direct converter ready.';
+        progressTitle.innerText = isBn ? 'ইউটিউব ভিডিও প্রস্তুত!' : 'YouTube Video Ready!';
+        progressSub.innerText = isBn ? 'ইন-অ্যাপ প্লেয়ার চালু হয়েছে এবং ডাউনলোড পেজ লোড হচ্ছে...' : 'Inline player active and download engine loading...';
 
         const container = document.getElementById('playerContainer');
         if (container.style.display !== 'block') {
@@ -1149,10 +1149,20 @@
         }
 
         const vId = currentProbe.videoId;
-        if (vId) {
-          const dlUrl = 'https://en.y2mate.is/youtube-to-mp4.html?v=' + encodeURIComponent(vId);
-          window.open(dlUrl, '_blank');
-        }
+        const ytTarget = vId ? ('https://www.youtube.com/watch?v=' + encodeURIComponent(vId)) : currentProbe.url;
+        // Primary fast server: 9xBuddy (unblocked in Bangladesh & worldwide, direct format parser)
+        const dlUrl = 'https://9xbuddy.in/process?url=' + encodeURIComponent(ytTarget);
+
+        progressSub.innerHTML = `
+          <div>${isBn ? 'ভিডিওটি স্বয়ংক্রিয়ভাবে প্রসেস হচ্ছে। যদি নতুন পেজ না খুলে নিচে চাপুন:' : 'Processing automatically. If tab does not open, tap below:'}</div>
+          <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+            <a href="${dlUrl}" target="_blank" class="btn btn-primary" style="padding:6px 12px; font-size:12px; text-decoration:none;">🚀 ${isBn ? 'সার্ভার ১ (9xBuddy)' : 'Server 1 (9xBuddy)'}</a>
+            <a href="https://keepv.id/?url=${encodeURIComponent(ytTarget)}" target="_blank" class="btn btn-outline" style="padding:6px 12px; font-size:12px; text-decoration:none;">⚡ ${isBn ? 'সার্ভার ২ (KeepVid)' : 'Server 2 (KeepVid)'}</a>
+            <a href="https://snapsave.io/en/home?url=${encodeURIComponent(ytTarget)}" target="_blank" class="btn btn-outline" style="padding:6px 12px; font-size:12px; text-decoration:none;">🎬 ${isBn ? 'সার্ভার ৩ (SnapSave)' : 'Server 3 (SnapSave)'}</a>
+          </div>
+        `;
+
+        window.open(dlUrl, '_blank');
         return;
       }
 
