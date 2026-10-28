@@ -179,13 +179,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (probe.platform == PlatformType.YOUTUBE && !probe.url.endsWith(".mp4")) {
             val videoId = UrlAnalyzer.analyze(probe.url).videoId
             val ytTarget = if (!videoId.isNullOrEmpty()) "https://www.youtube.com/watch?v=$videoId" else probe.url
-            val downloadUrl = "https://loader.to/?link=" + java.net.URLEncoder.encode(ytTarget, "UTF-8")
+
+            try {
+                val clipboard = getApplication<Application>().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("YouTube Video Link", ytTarget)
+                clipboard.setPrimaryClip(clip)
+            } catch (_: Exception) {}
+
+            val downloadUrl = "https://yt1s.biz/en/"
             try {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 getApplication<Application>().startActivity(intent)
-                val msg = if (_settings.value.language == "bn") "ইউটিউব ডাউনলোডার (Loader.to) খোলা হয়েছে।" else "YouTube downloader (Loader.to) opened."
+                val msg = if (_settings.value.language == "bn")
+                    "লিংক কপি হয়েছে! পেজ খুললে বক্সে Paste করে Download চাপুন।"
+                else
+                    "Link copied! Paste into the box and tap Download."
                 _toastMessage.value = Pair(msg, false)
             } catch (_: Exception) {}
             return
