@@ -179,25 +179,41 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (probe.platform == PlatformType.YOUTUBE && !probe.url.endsWith(".mp4")) {
             val videoId = UrlAnalyzer.analyze(probe.url).videoId
             val ytTarget = if (!videoId.isNullOrEmpty()) "https://www.youtube.com/watch?v=$videoId" else probe.url
+            val safeBase = (probe.title.ifEmpty { "youtube_video" }).replace(Regex("[^a-zA-Z0-9_-]"), "_").take(40).ifEmpty { "youtube_video" }
+            val filename = "${safeBase}.mp4"
+            val directStreamUrl = "https://ais-dev-26ga35ra7rvr2jcfdyuiws-66584326063.asia-southeast1.run.app/api/youtube-stream?url=" +
+                java.net.URLEncoder.encode(ytTarget, "UTF-8") + "&title=" + java.net.URLEncoder.encode(filename, "UTF-8")
 
             try {
-                val clipboard = getApplication<Application>().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("YouTube Video Link", ytTarget)
-                clipboard.setPrimaryClip(clip)
-            } catch (_: Exception) {}
-
-            val downloadUrl = "https://yt1s.biz/en/"
-            try {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)).apply {
+                VideoDownloader.enqueueWithDownloadManager(
+                    context = getApplication(),
+                    url = directStreamUrl,
+                    filename = filename,
+                    title = probe.title
+                )
+                val msg = if (_settings.value.language == "bn")
+                    "সরাসরি MP4 ডাউনলোড শুরু হয়েছে (কোনো ওয়েবসাইট ছাড়াই)!"
+                else
+                    "Direct MP4 download started without third-party websites!"
+                _toastMessage.value = Pair(msg, false)
+                viewModelScope.launch {
+                    historyDao.insert(
+                        HistoryEntity(
+                            url = ytTarget,
+                            title = probe.title,
+                            platform = probe.platform.tag,
+                            contentType = "video/mp4",
+                            fileSizeBytes = probe.contentLength,
+                            status = "completed_dm"
+                        )
+                    )
+                }
+            } catch (_: Exception) {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(directStreamUrl)).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 getApplication<Application>().startActivity(intent)
-                val msg = if (_settings.value.language == "bn")
-                    "লিংক কপি হয়েছে! পেজ খুললে বক্সে Paste করে Download চাপুন।"
-                else
-                    "Link copied! Paste into the box and tap Download."
-                _toastMessage.value = Pair(msg, false)
-            } catch (_: Exception) {}
+            }
             return
         }
 

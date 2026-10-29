@@ -1,0 +1,11 @@
+{
+  "name": "videosaver-app",
+  "version": "3.1.0",
+  "description": "Video Saver App with Direct In-App Downloads",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {}
+}

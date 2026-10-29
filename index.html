@@ -373,7 +373,7 @@
       <div>
         <div class="brand-title">
           <span id="txtAppTitle">Video Saver</span>
-          <span class="version-tag">v3.0 (YouTube Servers &amp; Auto-Copy Fixed)</span>
+          <span class="version-tag">v3.1 (Direct YouTube MP4 In-App Engine)</span>
         </div>
         <div class="brand-sub" id="txtAppSub">Safe Direct Downloader</div>
       </div>
@@ -985,6 +985,28 @@
         thumb = pinThumb || thumb;
       }
 
+      let ytDirectDownloadUrl = null;
+      if (isYouTube) {
+        try {
+          const ytRes = await fetch('/api/youtube-info?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(8000) });
+          if (ytRes.ok) {
+            const ytData = await ytRes.json();
+            if (ytData.success) {
+              if (ytData.title) title = ytData.title;
+              if (ytData.thumbnail) thumb = ytData.thumbnail;
+              if (ytData.filename) filename = ytData.filename;
+              ytDirectDownloadUrl = ytData.directDownloadUrl;
+            }
+          }
+        } catch (e) {
+          console.warn('Backend YouTube info failed, using direct stream route:', e);
+        }
+        if (!ytDirectDownloadUrl) {
+          const safeName = (title || 'youtube_video').replace(/[^a-zA-Z0-9_-]/g, '_') + '.mp4';
+          ytDirectDownloadUrl = `/api/youtube-stream?url=${encodeURIComponent(url)}&title=${encodeURIComponent(safeName)}`;
+        }
+      }
+
       currentProbe = {
         url,
         title,
@@ -996,9 +1018,9 @@
         isDirect,
         videoId: ytVideoId,
         thumbnail: thumb,
-        hdUrl: isFacebook ? (directFbCdnUrl || hdDownloadUrl) : (isPinterest ? directPinMp4 : (isDirect ? url : null)),
+        hdUrl: isFacebook ? (directFbCdnUrl || hdDownloadUrl) : (isPinterest ? directPinMp4 : (isYouTube ? ytDirectDownloadUrl : (isDirect ? url : null))),
         sdUrl: isFacebook ? (sdDownloadUrl ? extractFbCdnUrl(sdDownloadUrl) : null) : null,
-        streamUrl: isFacebook ? (directFbCdnUrl || hdDownloadUrl) : (isPinterest ? directPinMp4 : (isDirect ? url : null))
+        streamUrl: isFacebook ? (directFbCdnUrl || hdDownloadUrl) : (isPinterest ? directPinMp4 : (isYouTube ? ytDirectDownloadUrl : (isDirect ? url : null)))
       };
 
       // Populate Result Card
@@ -1088,17 +1110,16 @@
         btnHd.innerHTML = '<span>&#10515;</span> <span>' + (isBn ? 'HD ভিডিও ডাউনলোড করুন (720p MP4)' : 'Download Pinterest Video (720p MP4)') + '</span>';
         btnSd.style.display = 'none';
       } else if (isYouTube) {
-        // 3. YouTube UI setup
+        // 3. YouTube UI setup - Direct In-App MP4
         notice.innerText = isBn
-          ? 'ইউটিউব ভিডিও পাওয়া গেছে! প্রিভিউ দেখতে প্লেয়ার চালান অথবা নিচে 720p/360p রেজোলিউশনে ডাউনলোড বাটনে চাপুন।'
-          : 'YouTube video verified! Tap below to play preview or download in 720p/360p MP4.';
-        notice.style.borderColor = '#EF4444';
-        notice.style.color = '#FCA5A5';
+          ? 'ইউটিউব ভিডিও সরাসরি প্রস্তুত হয়েছে! নিচের ডাউনলোড বাটনে চাপ দিলে ভিডিওটি কোনো ওয়েবসাইট ছাড়াই সরাসরি আপনার ফোনে সেভ হবে।'
+          : 'YouTube video extracted! Tap the download button below to save directly to your phone without external websites.';
+        notice.style.borderColor = 'var(--emerald)';
+        notice.style.color = 'var(--emerald)';
 
         btnHd.style.display = 'flex';
-        btnHd.innerHTML = '<span>&#10515;</span> <span>' + (isBn ? 'HD ভিডিও ডাউনলোড করুন (720p MP4)' : 'Download HD Video (720p MP4)') + '</span>';
-        btnSd.style.display = 'flex';
-        btnSd.innerHTML = '<span>&#10515;</span> <span>' + (isBn ? 'SD ভিডিও ডাউনলোড করুন (360p MP4)' : 'Download SD Video (360p MP4)') + '</span>';
+        btnHd.innerHTML = '<span>&#10515;</span> <span>' + (isBn ? 'ভিডিও ডাউনলোড করুন (সরাসরি MP4)' : 'Download Video (Direct MP4)') + '</span>';
+        btnSd.style.display = 'none';
         btnPlayer.style.display = 'flex';
       } else if (isDirect) {
         // 4. Direct MP4 setup
@@ -1138,59 +1159,24 @@
 
       progressCard.style.display = 'flex';
 
-      // YouTube Download Flow - Direct Video Guide + Auto-Copy + Verified Active Engines
+      // YouTube Download Flow - DIRECT IN-APP MP4 DOWNLOAD (NO EXTERNAL WEBSITES!)
       if (currentProbe.isYouTube) {
-        progressTitle.innerText = isBn ? 'ইউটিউব ভিডিও ডাউনলোডার' : 'YouTube Video Downloader';
-        progressSub.innerText = isBn ? 'ইন-অ্যাপ প্লেয়ার চালু হয়েছে এবং লিংকটি ক্লিপবোর্ডে কপি করা হয়েছে।' : 'Inline player active and link copied to clipboard.';
-
-        const container = document.getElementById('playerContainer');
-        if (container.style.display !== 'block') {
-          togglePlayer();
-        }
+        progressTitle.innerText = isBn ? 'ইউটিউব ভিডিও ডাউনলোড হচ্ছে...' : 'Downloading YouTube Video...';
+        progressSub.innerHTML = `
+          <div style="color:var(--emerald); font-weight:700; margin-bottom:6px; font-size:13px;">
+            ✅ ${isBn ? 'ভিডিওটি কোনো ওয়েবসাইট ছাড়াই সরাসরি আপনার ফোনে সেভ হচ্ছে!' : 'Saving directly to your device without external websites!'}
+          </div>
+          <div style="font-size:11.5px; color:var(--text-sec); line-height:1.5;">
+            ${isBn ? 'ফাইলটি আপনার ফোনের "Downloads" ফোল্ডারে সেভ হচ্ছে। নোটিফিকেশন বারে ডাউনলোডের অগ্রগতি দেখতে পাবেন।' : 'File is saving to your Downloads folder. Check notification bar for progress.'}
+          </div>
+        `;
 
         const vId = currentProbe.videoId;
         const ytTarget = vId ? ('https://www.youtube.com/watch?v=' + vId) : currentProbe.url;
-        const encodedTarget = encodeURIComponent(ytTarget);
+        const safeName = (currentProbe.filename || 'youtube_video.mp4');
+        const dlUrl = currentProbe.hdUrl || (`/api/youtube-stream?url=${encodeURIComponent(ytTarget)}&title=${encodeURIComponent(safeName)}`);
 
-        // Pre-copy link immediately to clipboard
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(ytTarget).then(() => {
-            showYtToast(isBn ? '📋 ভিডিও লিংক স্বয়ংক্রিয়ভাবে কপি হয়েছে!' : '📋 Video link automatically copied!');
-          }).catch(() => {});
-        }
-
-        // Active verified online engines (No NXDOMAIN errors)
-        const s1 = 'https://yt1s.biz/en/';
-        const s2 = 'https://y2down.cc/en/';
-        const s3 = 'https://en.onlymp3.to/?url=' + encodedTarget;
-        const s4 = 'https://cobalt.tools/';
-
-        progressSub.innerHTML = `
-          <div style="background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; padding:10px; margin-bottom:12px; color:var(--emerald); font-size:12px; font-weight:600; display:flex; align-items:center; gap:8px;">
-            <span style="font-size:16px;">✅</span>
-            <span>${isBn ? 'ভিডিও লিংকটি আপনার ক্লিপবোর্ডে কপি করা হয়েছে!' : 'Video link copied to clipboard!'}</span>
-          </div>
-
-          <div style="font-size:12px; font-weight:600; margin-bottom:8px; color:var(--text);">${isBn ? 'নিচের যেকোনো সক্রিয় সার্ভারে গিয়ে বক্সে Paste করে দিন:' : 'Choose any active server below and Paste:'}</div>
-
-          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-            <button type="button" onclick="openYtServerWithCopy('${s1}', '${ytTarget.replace(/'/g, "\\'")}')" class="btn btn-primary" style="padding:9px 14px; font-size:12px; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">🚀 ${isBn ? 'সার্ভার ১ (YT1s - দ্রুততম)' : 'Server 1 (YT1s)'}</button>
-            <button type="button" onclick="openYtServerWithCopy('${s2}', '${ytTarget.replace(/'/g, "\\'")}')" class="btn btn-outline" style="padding:9px 14px; font-size:12px; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">⚡ ${isBn ? 'সার্ভার ২ (Y2Down)' : 'Server 2 (Y2Down)'}</button>
-            <button type="button" onclick="openYtServerWithCopy('${s3}', '${ytTarget.replace(/'/g, "\\'")}')" class="btn btn-outline" style="padding:9px 14px; font-size:12px; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">🎵 ${isBn ? 'সার্ভার ৩ (OnlyMP3 - অটো কনভার্ট)' : 'Server 3 (OnlyMP3)'}</button>
-            <button type="button" onclick="openYtServerWithCopy('${s4}', '${ytTarget.replace(/'/g, "\\'")}')" class="btn btn-outline" style="padding:9px 14px; font-size:12px; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">🛡️ ${isBn ? 'সার্ভার ৪ (Cobalt - নো অ্যাডস)' : 'Server 4 (Cobalt)'}</button>
-            <button type="button" onclick="copyCleanYtUrl('${ytTarget.replace(/'/g, "\\'")}')" class="btn btn-outline" style="padding:9px 14px; font-size:12px; border-color:var(--cyan); color:var(--cyan); display:inline-flex; align-items:center; gap:6px; cursor:pointer;">📋 ${isBn ? 'পুনরায় লিংক কপি' : 'Copy Link Again'}</button>
-          </div>
-
-          <div style="padding:10px; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:8px; font-size:11.5px; line-height:1.6; color:#C7D2FE; margin-bottom:10px;">
-            <strong style="color:var(--cyan);">📌 কীভাবে ডাউনলোড করবেন:</strong><br>
-            ${isBn ? '১. সার্ভার ১ বা ২ বাটনে চাপ দিলে সাইটটি খুলবে।<br>২. সাইটের সার্চ বক্সে ২ সেকেন্ড চাপ দিয়ে ধরে <b>"Paste"</b> চাপুন।<br>৩. এরপর <b>Download / Convert</b> বাটনে চাপ দিলে ভিডিও বা অডিও সরাসরি ফোনে সেভ হবে।' : '1. Tap Server 1 or 2.<br>2. Long press in the box on the website and tap <b>Paste</b>.<br>3. Tap Download to save the video.'}
-          </div>
-
-          <div style="padding:10px; background:rgba(6,182,212,0.08); border:1px solid rgba(6,182,212,0.25); border-radius:8px; font-size:11px; line-height:1.5; color:var(--text-sec);">
-            <strong style="color:var(--cyan);">🛡️ DNS নিরাপত্তা (পর্ন ও ভাইরাস ছাড়া ফুল আনব্লকড নেট):</strong><br>
-            ${isBn ? 'ফোনের <b>Settings ⚙️ &gt; Connections &gt; More connection settings &gt; Private DNS</b>-এ গিয়ে <code>family.cloudflare-dns.com</code> লিখে Save করুন। এটি সব ধরনের খারাপ/অ্যাডাল্ট সাইট স্বয়ংক্রিয়ভাবে ব্লক রাখবে এবং আপনার মোবাইল সিমে ডাউনলোডার সাইটগুলো কোনো বাধা ছাড়াই দ্রুত চলবে।' : 'For an adult-free and malware-safe unblocked connection, set your phone Private DNS to <code>family.cloudflare-dns.com</code>.'}
-          </div>
-        `;
+        triggerBrowserDownload(dlUrl, safeName);
         return;
       }
 
