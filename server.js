@@ -103,7 +103,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // API 2: Direct In-App Stream / Download
+  // API 2: Direct In-App Stream / Download (with auto-redirect fallback)
   if (pathname === '/api/youtube-stream') {
     const targetUrl = parsedUrl.searchParams.get('url');
     const customTitle = parsedUrl.searchParams.get('title');
@@ -114,15 +114,12 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    const filename = sanitizeFilename(customTitle || 'video.mp4');
-    console.log(`[YouTube Stream] Streaming directly: ${targetUrl} as ${filename}`);
+    const match = targetUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
+    const vId = match ? match[1] : '';
+    const fallbackRedirect = vId ? `https://ssyoutube.com/watch?v=${vId}` : targetUrl;
 
-    res.writeHead(200, {
-      'Content-Type': 'video/mp4',
-      'Content-Disposition': `attachment; filename="${filename}"`,
-      'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache'
-    });
+    const filename = sanitizeFilename(customTitle || 'video.mp4');
+    console.log(`[YouTube Stream] Processing: ${targetUrl} as ${filename}`);
 
     const ytProcess = spawn(YTDLP_BIN, [
       '--js-runtimes', 'node:node',
@@ -131,10 +128,25 @@ const server = http.createServer((req, res) => {
       '-o', '-'
     ]);
 
-    ytProcess.stdout.on('error', () => {});
-    ytProcess.stderr.on('error', () => {});
+    let hasSentHeaders = false;
 
-    ytProcess.stdout.pipe(res);
+    ytProcess.stdout.once('data', (chunk) => {
+      hasSentHeaders = true;
+      res.writeHead(200, {
+        'Content-Type': 'video/mp4',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      });
+      res.write(chunk);
+      ytProcess.stdout.pipe(res);
+    });
+
+    ytProcess.stdout.on('error', () => {});
+    ytProcess.stderr.on('data', (d) => {
+      // Log stderr for debugging
+      console.log('[yt-dlp stderr]', d.toString().trim());
+    });
 
     req.on('close', () => {
       try {
@@ -142,11 +154,25 @@ const server = http.createServer((req, res) => {
       } catch (_) {}
     });
 
+    ytProcess.on('close', (code) => {
+      if (!hasSentHeaders) {
+        console.log(`[YouTube Stream] yt-dlp exited with code ${code} without data. Redirecting to: ${fallbackRedirect}`);
+        res.writeHead(302, {
+          'Location': fallbackRedirect,
+          'Cache-Control': 'no-cache'
+        });
+        res.end();
+      }
+    });
+
     ytProcess.on('error', (err) => {
       console.error('[Stream Error]', err);
-      if (!res.headersSent) {
-        res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end('Stream error: ' + err.message);
+      if (!hasSentHeaders) {
+        res.writeHead(302, {
+          'Location': fallbackRedirect,
+          'Cache-Control': 'no-cache'
+        });
+        res.end();
       }
     });
     return;

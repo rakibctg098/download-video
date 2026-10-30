@@ -248,11 +248,77 @@ fun ProbeResultCard(
                         Text(
                             text = if (isDownloading)
                                 (if (language == "bn") "ডাউনলোড হচ্ছে..." else "Downloading...")
+                            else if (result.platform == PlatformType.YOUTUBE)
+                                (if (language == "bn") "ভিডিও ডাউনলোড করুন (সার্ভার ১ - SaveFrom)" else "Download Video (Server 1 - SaveFrom)")
                             else
                                 (if (language == "bn") "ভিডিও ডাউনলোড করুন (MP4 Save)" else "Download Video (MP4)"),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
+                    }
+                }
+
+                if (result.platform == PlatformType.YOUTUBE) {
+                    val encoded = java.net.URLEncoder.encode(result.url, "UTF-8")
+                    val vMatch = Regex("(?:youtu\\.be/|youtube\\.com/(?:embed/|v/|watch\\?v=|watch\\?.+&v=|shorts/))([\\w-]{11})").find(result.url)
+                    val vId = vMatch?.groupValues?.get(1) ?: ""
+                    val s1Url = if (vId.isNotEmpty()) "https://ssyoutube.com/watch?v=$vId" else "https://en1.savefrom.net/1-youtube-video-downloader-22wW/?url=$encoded"
+                    val s2Url = "https://y2down.cc/en/?url=$encoded"
+                    val s3Url = "https://fastdl.app/en?url=$encoded"
+                    val s4Url = "https://snapsave.io/en/home?url=$encoded"
+
+                    Text(
+                        text = if (language == "bn") "বিকল্প ডাউনলোড সার্ভারসমূহ (অটো-লোড):" else "Alternative Servers (Auto-Prefilled):",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = BrandCyan
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(s1Url))) },
+                            modifier = Modifier.weight(1f).height(38.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
+                            border = BorderStroke(1.dp, BrandEmerald.copy(alpha = 0.5f))
+                        ) {
+                            Text("১: SaveFrom", fontSize = 10.sp, color = BrandEmerald, fontWeight = FontWeight.Bold)
+                        }
+                        OutlinedButton(
+                            onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(s2Url))) },
+                            modifier = Modifier.weight(1f).height(38.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
+                            border = BorderStroke(1.dp, BrandCyan.copy(alpha = 0.5f))
+                        ) {
+                            Text("২: Y2Down", fontSize = 10.sp, color = BrandCyan, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(s3Url))) },
+                            modifier = Modifier.weight(1f).height(38.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
+                            border = BorderStroke(1.dp, Color(0xFF60A5FA).copy(alpha = 0.5f))
+                        ) {
+                            Text("৩: FastDL", fontSize = 10.sp, color = Color(0xFF60A5FA), fontWeight = FontWeight.Bold)
+                        }
+                        OutlinedButton(
+                            onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(s4Url))) },
+                            modifier = Modifier.weight(1f).height(38.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
+                            border = BorderStroke(1.dp, BrandRose.copy(alpha = 0.5f))
+                        ) {
+                            Text("৪: SnapSave", fontSize = 10.sp, color = BrandRose, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
 

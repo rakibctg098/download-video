@@ -179,22 +179,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (probe.platform == PlatformType.YOUTUBE && !probe.url.endsWith(".mp4")) {
             val videoId = UrlAnalyzer.analyze(probe.url).videoId
             val ytTarget = if (!videoId.isNullOrEmpty()) "https://www.youtube.com/watch?v=$videoId" else probe.url
-            val safeBase = (probe.title.ifEmpty { "youtube_video" }).replace(Regex("[^a-zA-Z0-9_-]"), "_").take(40).ifEmpty { "youtube_video" }
-            val filename = "${safeBase}.mp4"
-            val directStreamUrl = "https://ais-dev-26ga35ra7rvr2jcfdyuiws-66584326063.asia-southeast1.run.app/api/youtube-stream?url=" +
-                java.net.URLEncoder.encode(ytTarget, "UTF-8") + "&title=" + java.net.URLEncoder.encode(filename, "UTF-8")
+            val savefromUrl = if (!videoId.isNullOrEmpty()) "https://ssyoutube.com/watch?v=$videoId" else "https://en1.savefrom.net/1-youtube-video-downloader-22wW/?url=" + java.net.URLEncoder.encode(ytTarget, "UTF-8")
 
             try {
-                VideoDownloader.enqueueWithDownloadManager(
-                    context = getApplication(),
-                    url = directStreamUrl,
-                    filename = filename,
-                    title = probe.title
-                )
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(savefromUrl)).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                getApplication<Application>().startActivity(intent)
                 val msg = if (_settings.value.language == "bn")
-                    "সরাসরি MP4 ডাউনলোড শুরু হয়েছে (কোনো ওয়েবসাইট ছাড়াই)!"
+                    "সার্ভার ১ (SaveFrom) এ ভিডিওটি স্বয়ংক্রিয়ভাবে লোড হচ্ছে!"
                 else
-                    "Direct MP4 download started without third-party websites!"
+                    "Loading video automatically on Server 1 (SaveFrom)!"
                 _toastMessage.value = Pair(msg, false)
                 viewModelScope.launch {
                     historyDao.insert(
@@ -204,15 +199,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             platform = probe.platform.tag,
                             contentType = "video/mp4",
                             fileSizeBytes = probe.contentLength,
-                            status = "completed_dm"
+                            status = "completed"
                         )
                     )
                 }
-            } catch (_: Exception) {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(directStreamUrl)).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                getApplication<Application>().startActivity(intent)
+            } catch (e: Exception) {
+                val msg = if (_settings.value.language == "bn") "ব্রাউজার খোলা সম্ভব হয়নি।" else "Could not open browser."
+                _toastMessage.value = Pair(msg, true)
             }
             return
         }
