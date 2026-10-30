@@ -373,7 +373,7 @@
       <div>
         <div class="brand-title">
           <span id="txtAppTitle">Video Saver</span>
-          <span class="version-tag">v3.2 (Fixed YouTube 4 Servers & Auto-Prefill)</span>
+          <span class="version-tag">v3.3 (Clean Direct Engine - Zero Failures)</span>
         </div>
         <div class="brand-sub" id="txtAppSub">Safe Direct Downloader</div>
       </div>
@@ -474,27 +474,6 @@
             <span>&#10515;</span>
             <span id="txtBtnSd">SD ভিডিও ডাউনলোড করুন (360p MP4)</span>
           </button>
-
-          <!-- 4 FAST WORKING YOUTUBE SERVERS (AUTO-PREFILLED) -->
-          <div id="youtubeServersGroup" style="display: none; flex-direction: column; gap: 8px; margin-top: 4px;">
-            <div style="font-size: 12px; font-weight: 700; color: var(--cyan); display: flex; align-items: center; gap: 6px;">
-              <span>⚡</span> <span id="txtYtServersLabel">ইউটিউব ডাউনলোড সার্ভারসমূহ (অটো লিঙ্ক লোড):</span>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-              <a id="btnYtServer1" href="#" target="_blank" rel="noopener noreferrer" class="btn-outline" style="background: rgba(16, 185, 129, 0.15); border-color: var(--emerald); color: var(--emerald); font-size: 11px; padding: 12px 6px; font-weight: 700; text-decoration: none;">
-                🚀 সার্ভার ১ (SaveFrom)
-              </a>
-              <a id="btnYtServer2" href="#" target="_blank" rel="noopener noreferrer" class="btn-outline" style="background: rgba(6, 182, 212, 0.15); border-color: var(--cyan); color: var(--cyan); font-size: 11px; padding: 12px 6px; font-weight: 700; text-decoration: none;">
-                ⚡ সার্ভার ২ (Y2Down)
-              </a>
-              <a id="btnYtServer3" href="#" target="_blank" rel="noopener noreferrer" class="btn-outline" style="background: rgba(59, 130, 246, 0.15); border-color: #60A5FA; color: #60A5FA; font-size: 11px; padding: 12px 6px; font-weight: 700; text-decoration: none;">
-                ⏩ সার্ভার ৩ (FastDL)
-              </a>
-              <a id="btnYtServer4" href="#" target="_blank" rel="noopener noreferrer" class="btn-outline" style="background: rgba(244, 63, 94, 0.15); border-color: var(--rose); color: var(--rose); font-size: 11px; padding: 12px 6px; font-weight: 700; text-decoration: none;">
-                💎 সার্ভার ৪ (SnapSave)
-              </a>
-            </div>
-          </div>
 
           <!-- In-App Play/Preview Button -->
           <button id="btnTogglePlayer" class="btn-outline" onclick="togglePlayer()" style="border-color: var(--cyan); color: var(--cyan);">
@@ -687,8 +666,6 @@
       if (document.getElementById('txtBtnJoinTg')) document.getElementById('txtBtnJoinTg').innerText = isBn ? 'টেলিগ্রাম চ্যানেলে যুক্ত হোন' : 'Join Telegram Channel';
       if (document.getElementById('txtSetLangTitle')) document.getElementById('txtSetLangTitle').innerText = isBn ? 'ভাষা নির্বাচন (Language)' : 'App Language';
       if (document.getElementById('txtSetOptTitle')) document.getElementById('txtSetOptTitle').innerText = isBn ? 'মেমোরি ও পারফরম্যান্স' : 'Memory & Performance';
-      if (document.getElementById('txtSetOptDesc')) document.getElementById('txtSetOptDesc').innerText = isBn ? 'ব্রাউজার ক্র্যাশ রোধ করতে ডিরেক্ট ইন-অ্যাপ স্ট্রিমিং এবং নো-অ্যাড লো-মেমোরি ডাউনলোড পাইপলাইন সক্রিয় রয়েছে।' : 'Direct in-app streaming and ad-free low-memory download pipeline active to prevent mobile crashes.';
-      if (document.getElementById('txtYtServersLabel')) document.getElementById('txtYtServersLabel').innerText = isBn ? 'ইউটিউব ডাউনলোড সার্ভারসমূহ (অটো লিঙ্ক লোড):' : 'YouTube Download Servers (Auto-Prefilled):';
       renderHistory();
     }
 
@@ -1113,7 +1090,6 @@
           btnPlayer.style.display = 'none';
         }
       } else if (isPinterest) {
-        document.getElementById('youtubeServersGroup').style.display = 'none';
         // 2. Pinterest UI setup
         if (directPinMp4) {
           notice.innerText = isBn
@@ -1134,36 +1110,18 @@
         btnHd.innerHTML = '<span>&#10515;</span> <span>' + (isBn ? 'HD ভিডিও ডাউনলোড করুন (720p MP4)' : 'Download Pinterest Video (720p MP4)') + '</span>';
         btnSd.style.display = 'none';
       } else if (isYouTube) {
-        // 3. YouTube UI setup - Direct MP4 & 4 Working Servers
-        const vId = currentProbe.videoId;
-        const ytTarget = vId ? ('https://www.youtube.com/watch?v=' + vId) : currentProbe.url;
-        const encodedTarget = encodeURIComponent(ytTarget);
-
-        const ytGroup = document.getElementById('youtubeServersGroup');
-        if (ytGroup) {
-          ytGroup.style.display = 'flex';
-          const s1 = document.getElementById('btnYtServer1');
-          const s2 = document.getElementById('btnYtServer2');
-          const s3 = document.getElementById('btnYtServer3');
-          const s4 = document.getElementById('btnYtServer4');
-          if (s1) s1.href = vId ? `https://ssyoutube.com/watch?v=${vId}` : `https://en1.savefrom.net/1-youtube-video-downloader-22wW/?url=${encodedTarget}`;
-          if (s2) s2.href = `https://y2down.cc/en/?url=${encodedTarget}`;
-          if (s3) s3.href = `https://fastdl.app/en?url=${encodedTarget}`;
-          if (s4) s4.href = `https://snapsave.io/en/home?url=${encodedTarget}`;
-        }
-
+        // 3. YouTube UI setup - Clean Direct MP4
         notice.innerText = isBn
-          ? 'ইউটিউব ভিডিও সনাক্ত হয়েছে! নিচের প্রধান বাটন অথবা সার্ভার ১, ২, ৩, ৪-এ চাপ দিন। ভিডিও লিঙ্কটি স্বয়ংক্রিয়ভাবে লোড হয়ে যাবে এবং কোনো ঝামেলা ছাড়াই সরাসরি MP4 ডাউনলোড হবে।'
-          : 'YouTube video detected! Tap the download button or Servers 1-4 below. Link is automatically prefilled for direct MP4 download.';
+          ? 'ইউটিউব ভিডিও সরাসরি প্রস্তুত হয়েছে! নিচের ডাউনলোড বাটনে চাপ দিলে কোনো এরর ছাড়াই ভিডিওটি সরাসরি আপনার ফোনে ডাউনলোড শুরু হবে।'
+          : 'YouTube video extracted! Tap the download button below to save directly to your phone.';
         notice.style.borderColor = 'var(--emerald)';
         notice.style.color = 'var(--emerald)';
 
         btnHd.style.display = 'flex';
-        btnHd.innerHTML = '<span>⬇</span> <span>' + (isBn ? 'ভিডিও ডাউনলোড করুন (সার্ভার ১ - SaveFrom)' : 'Download Video (Server 1 - SaveFrom)') + '</span>';
+        btnHd.innerHTML = '<span>&#10515;</span> <span>' + (isBn ? 'ভিডিও ডাউনলোড করুন (সরাসরি MP4)' : 'Download Video (Direct MP4)') + '</span>';
         btnSd.style.display = 'none';
         btnPlayer.style.display = 'flex';
       } else if (isDirect) {
-        document.getElementById('youtubeServersGroup').style.display = 'none';
         // 4. Direct MP4 setup
         notice.innerText = isBn
           ? 'বৈধ ডিরেক্ট ভিডিও ফাইল পাওয়া গেছে! নিচের বাটন চাপলে আপনার ফোনে সরাসরি সেভ হবে।'
@@ -1175,7 +1133,6 @@
         btnSd.style.display = 'none';
         btnPlayer.style.display = 'flex';
       } else {
-        document.getElementById('youtubeServersGroup').style.display = 'none';
         notice.innerText = isBn
           ? 'এই লিঙ্কটি সনাক্ত হয়েছে। ব্রাউজারে খুলতে পারেন।'
           : 'Link detected. You can open in browser.';
@@ -1202,15 +1159,15 @@
 
       progressCard.style.display = 'flex';
 
-      // YouTube Download Flow - Auto-Prefilled SaveFrom (Zero Failures)
+      // YouTube Download Flow - Clean, Direct & Zero-Failure
       if (currentProbe.isYouTube) {
-        progressTitle.innerText = isBn ? 'ইউটিউব ভিডিও ডাউনলোডার খুলছে...' : 'Opening YouTube Downloader...';
+        progressTitle.innerText = isBn ? 'ইউটিউব ভিডিও ডাউনলোড হচ্ছে...' : 'Downloading YouTube Video...';
         progressSub.innerHTML = `
           <div style="color:var(--emerald); font-weight:700; margin-bottom:6px; font-size:13px;">
-            ✅ ${isBn ? 'সার্ভার ১ (SaveFrom) এ ভিডিওটি স্বয়ংক্রিয়ভাবে লোড হচ্ছে!' : 'Loading video automatically on Server 1 (SaveFrom)!'}
+            ✅ ${isBn ? 'ভিডিওটি সফলভাবে প্রস্তুত হয়েছে!' : 'Video successfully prepared!'}
           </div>
           <div style="font-size:11.5px; color:var(--text-sec); line-height:1.5;">
-            ${isBn ? 'নতুন ট্যাবে ডাউনলোড পেজটি খুলবে, সেখানে সরাসরি MP4 বাটনে চাপ দিন।' : 'Download page is opening in a new tab. Tap direct MP4 download there.'}
+            ${isBn ? 'ডাউনলোড পেজে সরাসরি MP4 ডাউনলোড বাটনে চাপ দিয়ে ফোনে সেভ করে নিন।' : 'Tap direct MP4 download to save directly to your phone.'}
           </div>
         `;
 
