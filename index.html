@@ -373,7 +373,7 @@
       <div>
         <div class="brand-title">
           <span id="txtAppTitle">Video Saver</span>
-          <span class="version-tag">v3.3 (Clean Direct Engine - Zero Failures)</span>
+          <span class="version-tag">v3.4 (1-Click YouTube, FB & Pinterest Engine)</span>
         </div>
         <div class="brand-sub" id="txtAppSub">Safe Direct Downloader</div>
       </div>
@@ -1159,22 +1159,37 @@
 
       progressCard.style.display = 'flex';
 
-      // YouTube Download Flow - Clean, Direct & Zero-Failure (Unblocked in BD)
+      // YouTube Download Flow - 1-Click Direct MP4 Download (Identical to Facebook and Pinterest)
       if (currentProbe.isYouTube) {
-        progressTitle.innerText = isBn ? 'ইউটিউব ভিডিও ডাউনলোড হচ্ছে...' : 'Downloading YouTube Video...';
-        progressSub.innerHTML = `
-          <div style="color:var(--emerald); font-weight:700; margin-bottom:6px; font-size:13px;">
-            ✅ ${isBn ? 'ভিডিওটি সফলভাবে প্রস্তুত হয়েছে!' : 'Video successfully prepared!'}
-          </div>
-          <div style="font-size:11.5px; color:var(--text-sec); line-height:1.5;">
-            ${isBn ? 'নতুন ট্যাবে ভিডিও লিঙ্কটি স্বয়ংক্রিয়ভাবে লোড হচ্ছে। সেখানে "Record Video" বাটনে চাপ দিলেই সরাসরি আসল MP4 ফাইল সেভ হবে।' : 'Opening converter with link prefilled. Tap "Record Video" to save MP4 directly.'}
-          </div>
-        `;
+        let ytDirectUrl = (quality === 'sd' && currentProbe.sdUrl) ? currentProbe.sdUrl : (currentProbe.hdUrl || currentProbe.streamUrl);
+        const fname = (currentProbe.filename || 'youtube_video.mp4');
 
-        const vId = currentProbe.videoId;
-        const ytTarget = vId ? ('https://www.youtube.com/watch?v=' + vId) : currentProbe.url;
-        const targetUrl = 'https://dirpy.com/studio?url=' + encodeURIComponent(ytTarget);
-        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+        if (ytDirectUrl && !ytDirectUrl.includes('youtube.com')) {
+          triggerBrowserDownload(ytDirectUrl, fname);
+          return;
+        }
+
+        progressTitle.innerText = isBn ? 'ইউটিউব ভিডিও ডাউনলোড হচ্ছে...' : 'Downloading YouTube Video...';
+        progressSub.innerText = isBn ? 'সরাসরি MP4 লিংক প্রস্তুত করে ডাউনলোড শুরু করা হচ্ছে...' : 'Preparing direct MP4 and starting download...';
+
+        fetch('/api/youtube-info?url=' + encodeURIComponent(currentProbe.url))
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.success && (data.directDownloadUrl || data.hdUrl)) {
+              const directUrl = data.directDownloadUrl || data.hdUrl;
+              currentProbe.hdUrl = directUrl;
+              currentProbe.streamUrl = directUrl;
+              const finalName = data.filename || fname;
+              triggerBrowserDownload(directUrl, finalName);
+            } else {
+              const fallbackUrl = `/api/youtube-stream?url=${encodeURIComponent(currentProbe.url)}&title=${encodeURIComponent(fname)}`;
+              triggerBrowserDownload(fallbackUrl, fname);
+            }
+          })
+          .catch(() => {
+            const fallbackUrl = `/api/youtube-stream?url=${encodeURIComponent(currentProbe.url)}&title=${encodeURIComponent(fname)}`;
+            triggerBrowserDownload(fallbackUrl, fname);
+          });
         return;
       }
 

@@ -58,45 +58,83 @@ object NetworkProbe {
         val analysis = UrlAnalyzer.analyze(url)
         val targetUrl = analysis.normalizedUrl.ifEmpty { url.trim() }
 
-        // 1. YouTube handling
+        // 1. YouTube handling - 1-Click Direct MP4 Resolution
         if (analysis.platform == PlatformType.YOUTUBE) {
             var title = analysis.suggestedTitle
             var author = "YouTube Creator"
             var thumb: String? = null
+            var directMp4Url: String? = null
+            var qualityLabel = "720p HD MP4"
 
-            try {
-                val oEmbedUrl = "https://www.youtube.com/oembed?url=${URLEncoder.encode(targetUrl, "UTF-8")}&format=json"
-                val request = Request.Builder()
-                    .url(oEmbedUrl)
-                    .header("User-Agent", "Mozilla/5.0 VideoSaver/2.0")
-                    .build()
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val body = response.body?.string()
-                    if (!body.isNullOrEmpty()) {
-                        val json = JSONObject(body)
-                        title = json.optString("title", title)
-                        author = json.optString("author_name", author)
-                        thumb = json.optString("thumbnail_url", null)
+            // 1. Try local backend resolver
+            val backendEndpoints = listOf(
+                "http://10.0.2.2:3000/api/youtube-info?url=${URLEncoder.encode(targetUrl, "UTF-8")}",
+                "http://localhost:3000/api/youtube-info?url=${URLEncoder.encode(targetUrl, "UTF-8")}"
+            )
+            for (endpoint in backendEndpoints) {
+                try {
+                    val bReq = Request.Builder()
+                        .url(endpoint)
+                        .header("User-Agent", "Mozilla/5.0 VideoSaver/2.0")
+                        .build()
+                    val bRes = client.newCall(bReq).execute()
+                    if (bRes.isSuccessful) {
+                        val bBody = bRes.body?.string() ?: ""
+                        if (bBody.isNotEmpty()) {
+                            val json = JSONObject(bBody)
+                            if (json.optBoolean("success", false)) {
+                                title = json.optString("title", title)
+                                thumb = json.optString("thumbnail", thumb)
+                                directMp4Url = json.optString("directDownloadUrl", null)
+                                    ?: json.optString("hdUrl", null)
+                                val q = json.optString("quality", "")
+                                if (q.isNotEmpty()) qualityLabel = "$q MP4"
+                                if (!directMp4Url.isNullOrEmpty()) break
+                            }
+                        }
                     }
-                }
-            } catch (_: Exception) {}
+                } catch (_: Exception) {}
+            }
+
+            // Fallback: oEmbed metadata if title/thumb not yet resolved
+            if (thumb == null || title == analysis.suggestedTitle) {
+                try {
+                    val oEmbedUrl = "https://www.youtube.com/oembed?url=${URLEncoder.encode(targetUrl, "UTF-8")}&format=json"
+                    val request = Request.Builder()
+                        .url(oEmbedUrl)
+                        .header("User-Agent", "Mozilla/5.0 VideoSaver/2.0")
+                        .build()
+                    val response = client.newCall(request).execute()
+                    if (response.isSuccessful) {
+                        val body = response.body?.string()
+                        if (!body.isNullOrEmpty()) {
+                            val json = JSONObject(body)
+                            title = json.optString("title", title)
+                            author = json.optString("author_name", author)
+                            if (thumb == null) thumb = json.optString("thumbnail_url", null)
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+
+            val finalUrl = directMp4Url
+                ?: "http://10.0.2.2:3000/api/youtube-stream?url=${URLEncoder.encode(targetUrl, "UTF-8")}"
 
             return@withContext ProbeResult(
-                url = targetUrl,
+                url = finalUrl,
                 platform = PlatformType.YOUTUBE,
                 isDirectMedia = true,
                 contentType = "video/mp4",
                 contentLength = null,
-                formattedSize = "720p / 360p MP4",
+                formattedSize = qualityLabel,
                 filename = analysis.suggestedFilename,
                 title = title,
                 thumbnailUrl = thumb,
                 authorName = author,
                 supportsRanges = true,
                 canDownloadDirectly = true,
-                messageBn = "ইউটিউব ভিডিও সফলভাবে পাওয়া গেছে! প্রিভিউ দেখতে প্লেয়ারে চালান অথবা 'ভিডিও ডাউনলোড করুন' বাটনে চাপুন।",
-                messageEn = "YouTube video verified! Tap play to preview or download."
+                messageBn = "ইউটিউব $qualityLabel ভিডিও সরাসরি প্রস্তুত হয়েছে! নিচের ডাউনলোড বাটনে চাপলে সরাসরি ফোনে সেভ হবে।",
+                messageEn = "YouTube $qualityLabel video ready! Tap download to save directly."
             )
         }
 

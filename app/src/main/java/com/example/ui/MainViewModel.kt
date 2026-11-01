@@ -176,39 +176,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         downloadJob?.cancel()
 
-        if (probe.platform == PlatformType.YOUTUBE && !probe.url.endsWith(".mp4")) {
-            val videoId = UrlAnalyzer.analyze(probe.url).videoId
-            val ytTarget = if (!videoId.isNullOrEmpty()) "https://www.youtube.com/watch?v=$videoId" else probe.url
-            val dirpyUrl = "https://dirpy.com/studio?url=" + java.net.URLEncoder.encode(ytTarget, "UTF-8")
-
-            try {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(dirpyUrl)).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                getApplication<Application>().startActivity(intent)
-                val msg = if (_settings.value.language == "bn")
-                    "ভিডিও ডাউনলোডার সফলভাবে লোড হচ্ছে..."
-                else
-                    "Loading video downloader..."
-                _toastMessage.value = Pair(msg, false)
-                viewModelScope.launch {
-                    historyDao.insert(
-                        HistoryEntity(
-                            url = ytTarget,
-                            title = probe.title,
-                            platform = probe.platform.tag,
-                            contentType = "video/mp4",
-                            fileSizeBytes = probe.contentLength,
-                            status = "completed"
-                        )
-                    )
-                }
-            } catch (e: Exception) {
-                val msg = if (_settings.value.language == "bn") "ব্রাউজার খোলা সম্ভব হয়নি।" else "Could not open browser."
-                _toastMessage.value = Pair(msg, true)
-            }
-            return
-        }
 
         if (probe.platform == PlatformType.PINTEREST && !probe.url.contains(".mp4")) {
             val msg = if (_settings.value.language == "bn") "এই পিনটিতে সরাসরি কোনো ভিডিও পাওয়া যায়নি।" else "No direct video found in this pin."

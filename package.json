@@ -7,5 +7,8 @@
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@distube/ytdl-core": "^5.2.0",
+    "@vreden/youtube_scraper": "^1.2.9"
+  }
 }
