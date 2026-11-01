@@ -116,7 +116,8 @@ const server = http.createServer((req, res) => {
 
     const match = targetUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
     const vId = match ? match[1] : '';
-    const fallbackRedirect = vId ? `https://ssyoutube.com/watch?v=${vId}` : targetUrl;
+    const ytCanonical = vId ? `https://www.youtube.com/watch?v=${vId}` : targetUrl;
+    const fallbackRedirect = `https://dirpy.com/studio?url=${encodeURIComponent(ytCanonical)}`;
 
     const filename = sanitizeFilename(customTitle || 'video.mp4');
     console.log(`[YouTube Stream] Processing: ${targetUrl} as ${filename}`);

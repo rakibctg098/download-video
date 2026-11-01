@@ -1159,7 +1159,7 @@
 
       progressCard.style.display = 'flex';
 
-      // YouTube Download Flow - Clean, Direct & Zero-Failure
+      // YouTube Download Flow - Clean, Direct & Zero-Failure (Unblocked in BD)
       if (currentProbe.isYouTube) {
         progressTitle.innerText = isBn ? 'ইউটিউব ভিডিও ডাউনলোড হচ্ছে...' : 'Downloading YouTube Video...';
         progressSub.innerHTML = `
@@ -1167,12 +1167,13 @@
             ✅ ${isBn ? 'ভিডিওটি সফলভাবে প্রস্তুত হয়েছে!' : 'Video successfully prepared!'}
           </div>
           <div style="font-size:11.5px; color:var(--text-sec); line-height:1.5;">
-            ${isBn ? 'ডাউনলোড পেজে সরাসরি MP4 ডাউনলোড বাটনে চাপ দিয়ে ফোনে সেভ করে নিন।' : 'Tap direct MP4 download to save directly to your phone.'}
+            ${isBn ? 'নতুন ট্যাবে ভিডিও লিঙ্কটি স্বয়ংক্রিয়ভাবে লোড হচ্ছে। সেখানে "Record Video" বাটনে চাপ দিলেই সরাসরি আসল MP4 ফাইল সেভ হবে।' : 'Opening converter with link prefilled. Tap "Record Video" to save MP4 directly.'}
           </div>
         `;
 
         const vId = currentProbe.videoId;
-        const targetUrl = vId ? `https://ssyoutube.com/watch?v=${vId}` : `https://en1.savefrom.net/1-youtube-video-downloader-22wW/?url=${encodeURIComponent(currentProbe.url)}`;
+        const ytTarget = vId ? ('https://www.youtube.com/watch?v=' + vId) : currentProbe.url;
+        const targetUrl = 'https://dirpy.com/studio?url=' + encodeURIComponent(ytTarget);
         window.open(targetUrl, '_blank', 'noopener,noreferrer');
         return;
       }

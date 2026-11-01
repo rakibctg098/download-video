@@ -1,4 +1,4 @@
-const CACHE_NAME = 'videosaver-pwa-v15';
+const CACHE_NAME = 'videosaver-pwa-v16';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

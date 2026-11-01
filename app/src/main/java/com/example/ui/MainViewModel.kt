@@ -179,17 +179,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (probe.platform == PlatformType.YOUTUBE && !probe.url.endsWith(".mp4")) {
             val videoId = UrlAnalyzer.analyze(probe.url).videoId
             val ytTarget = if (!videoId.isNullOrEmpty()) "https://www.youtube.com/watch?v=$videoId" else probe.url
-            val savefromUrl = if (!videoId.isNullOrEmpty()) "https://ssyoutube.com/watch?v=$videoId" else "https://en1.savefrom.net/1-youtube-video-downloader-22wW/?url=" + java.net.URLEncoder.encode(ytTarget, "UTF-8")
+            val dirpyUrl = "https://dirpy.com/studio?url=" + java.net.URLEncoder.encode(ytTarget, "UTF-8")
 
             try {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(savefromUrl)).apply {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(dirpyUrl)).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 getApplication<Application>().startActivity(intent)
                 val msg = if (_settings.value.language == "bn")
-                    "সার্ভার ১ (SaveFrom) এ ভিডিওটি স্বয়ংক্রিয়ভাবে লোড হচ্ছে!"
+                    "ভিডিও ডাউনলোডার সফলভাবে লোড হচ্ছে..."
                 else
-                    "Loading video automatically on Server 1 (SaveFrom)!"
+                    "Loading video downloader..."
                 _toastMessage.value = Pair(msg, false)
                 viewModelScope.launch {
                     historyDao.insert(
